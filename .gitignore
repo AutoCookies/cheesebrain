@@ -21,6 +21,7 @@
 *.swp
 *.tmp
 *.DS_Store
+*:Zone.Identifier
 
 # IDE / OS
 

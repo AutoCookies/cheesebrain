@@ -29,6 +29,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -76,6 +77,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -135,6 +137,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -186,6 +189,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -244,6 +248,7 @@ jobs:
       - name: Clone
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -306,6 +311,8 @@ jobs:
       - name: Clone
         id: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: ccache
         uses: ggml-org/ccache-action@v1.2.16
@@ -376,6 +383,8 @@ jobs:
       - name: Clone
         id: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Install ccache
         uses: ggml-org/ccache-action@v1.2.16
@@ -452,6 +461,8 @@ jobs:
       - name: Clone
         id: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: ccache
         uses: ggml-org/ccache-action@v1.2.16
@@ -531,6 +542,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: ccache
@@ -628,6 +640,8 @@ jobs:
       - name: Clone
         id: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Grab rocWMMA package
         id: grab_rocwmma
@@ -725,6 +739,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Setup Xcode
@@ -801,6 +816,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Free up disk space
@@ -893,6 +909,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v6
         with:
+          submodules: recursive
           fetch-depth: 0
 
       - name: Determine tag name
