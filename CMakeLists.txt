@@ -179,9 +179,9 @@ if (ANDROID OR (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MA
 endif()
 
 # modular backends
-option(CHEESE_BACKEND_CUDA   "cheese: enable CUDA backend"   ON)
-option(CHEESE_BACKEND_METAL  "cheese: enable Metal backend"  ON)
-option(CHEESE_BACKEND_VULKAN "cheese: enable Vulkan backend" ON)
+option(CHEESE_BACKEND_CUDA   "cheese: enable CUDA backend"   OFF)
+option(CHEESE_BACKEND_METAL  "cheese: enable Metal backend"  OFF)
+option(CHEESE_BACKEND_VULKAN "cheese: enable Vulkan backend" OFF)
 
 if (CHEESE_EDGE_TARGET)
     set(CHEESE_BACKEND_CUDA   OFF CACHE BOOL "" FORCE)
