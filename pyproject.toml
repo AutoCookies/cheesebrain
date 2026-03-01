@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "cheese-cpp-scripts"
+version = "0.0.0"
+description = "Scripts that ship with cheese.cpp"
+authors = ["GGML <ggml@ggml.ai>"]
+readme = "README.md"
+homepage = "https://ggml.ai"
+repository = "https://github.com/ggml-org/cheese.cpp"
+keywords = ["ggml", "gguf", "cheese.cpp"]
+packages = [{ include = "*.py", from = "." }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+numpy = "^1.25.0"
+sentencepiece = ">=0.1.98,<0.3.0"
+transformers = ">=4.35.2,<5.0.0"
+protobuf = ">=4.21.0,<5.0.0"
+gguf = { path = "./gguf-py" }
+torch = { version = "^2.2.0", source = "pytorch" }
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+
+# Force wheel + cpu
+# For discussion and context see https://github.com/python-poetry/poetry#6409
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+cheese-convert-hf-to-gguf = "convert_hf_to_gguf:main"
+cheese-convert-lora-to-gguf = "convert_lora_to_gguf:main"
+cheese-convert-cheese-ggml-to-gguf = "convert_cheese_ggml_to_gguf:main"
+cheese-ggml-vk-generate-shaders = "ggml_vk_generate_shaders:main"

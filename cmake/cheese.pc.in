@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+
+Name: cheese
+Description: Port of Facebook's Cheese model in C/C++
+Version: @CHEESE_INSTALL_VERSION@
+Libs: -L${libdir} -lggml -lggml-base -lcheese
+Cflags: -I${includedir}

@@ -1,0 +1,5 @@
+set(TARGET cheese-convert-cheese2c-to-ggml)
+add_executable(${TARGET} convert-cheese2c-to-ggml.cpp)
+install(TARGETS ${TARGET} RUNTIME)
+target_link_libraries(${TARGET} PRIVATE common cheese ${CMAKE_THREAD_LIBS_INIT})
+target_compile_features(${TARGET} PRIVATE cxx_std_17)
