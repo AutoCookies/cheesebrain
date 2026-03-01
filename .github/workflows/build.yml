@@ -678,7 +678,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-      -   submodules: recursive
+          submodules: recursive
 
       - name: add oneAPI to apt
         shell: bash
@@ -731,7 +731,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-      -   submodules: recursive
+          submodules: recursive
 
       - name: add oneAPI to apt
         shell: bash

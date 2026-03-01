@@ -11,8 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
       with:
-    -   submodules: recursive
-        repository: "ggml-org/cheese.cpp"
+        submodules: recursive
     - uses: actions/labeler@v6
       with:
         configuration-path: '.github/labeler.yml'

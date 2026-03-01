@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-      -   submodules: recursive
+          submodules: recursive
       - uses: editorconfig-checker/action-editorconfig-checker@v2
         with:
           version: v3.0.3
