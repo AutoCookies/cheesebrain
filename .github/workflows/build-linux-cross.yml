@@ -8,7 +8,7 @@ jobs:
   #   runs-on: ubuntu-24.04
 
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v4
     with:
   #     -   submodules: recursive
   #     - name: Setup Riscv
@@ -54,7 +54,7 @@ jobs:
   #   runs-on: ubuntu-24.04
 
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v4
     with:
   #     -   submodules: recursive
   #     - name: Setup Riscv
@@ -103,7 +103,7 @@ jobs:
   #   runs-on: ubuntu-24.04
 
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v4
     with:
   #     -   submodules: recursive
   #     - name: Setup Arm64
@@ -152,7 +152,7 @@ jobs:
     container: debian@sha256:653dfb9f86c3782e8369d5f7d29bb8faba1f4bff9025db46e807fa4c22903671
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup LoongArch
@@ -209,7 +209,7 @@ jobs:
     container: debian@sha256:653dfb9f86c3782e8369d5f7d29bb8faba1f4bff9025db46e807fa4c22903671
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Setup LoongArch
@@ -272,7 +272,7 @@ jobs:
       SPACEMIT_IME_TOOLCHAIN_VERSION: "1.1.2"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
