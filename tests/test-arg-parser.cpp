@@ -183,7 +183,7 @@ int main(void) {
         assert(res.first == 200);
         assert(res.second.size() > 0);
         std::string str(res.second.data(), res.second.size());
-        assert(str.find("cheese.cpp") != std::string::npos);
+        assert(str.find("ggml") != std::string::npos);
     }
 
     {
