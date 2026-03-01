@@ -8911,8 +8911,16 @@ void cheese_free_model(cheese_model * model) {
 }
 
 void cheese_model_free(cheese_model * model) {
+#ifdef CHEESE_PALLOC
+    if (model) {
+        model->~cheese_model();
+        pa_free(model);
+    }
+#else
     delete model;
+#endif
 }
+
 
 int32_t cheese_model_n_ctx_train(const cheese_model * model) {
     return model->hparams.n_ctx_train;

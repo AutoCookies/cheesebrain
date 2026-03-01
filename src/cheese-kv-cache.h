@@ -151,6 +151,8 @@ public:
     uint32_t get_n_stream() const;
 
     bool get_has_shift() const;
+    
+    void squeeze(float threshold);
 
     //
     // graph_build API

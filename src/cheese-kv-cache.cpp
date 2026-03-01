@@ -577,7 +577,13 @@ cheese_kv_cache::slot_info_vec_t cheese_kv_cache::prepare(const std::vector<chee
 
     for (const auto & ubatch : ubatches) {
         // only find a suitable slot for the ubatch. don't modify the cells yet
-        const auto sinfo_new = find_slot(ubatch, false);
+        bool squeezed = false;
+        auto sinfo_new = find_slot(ubatch, false);
+        if (sinfo_new.empty() && !squeezed) {
+            squeeze(0.4f); // trigger 40% aggressiveness squeeze
+            squeezed = true;
+            sinfo_new = find_slot(ubatch, false);
+        }
         if (sinfo_new.empty()) {
             success = false;
             break;
@@ -930,6 +936,11 @@ void cheese_kv_cache::apply_ubatch(const slot_info & sinfo, const cheese_ubatch 
             }
 
             cells.pos_set(idx, ubatch.pos[i]);
+
+            if (ubatch.token) {
+                cells.token_set(idx, ubatch.token[i]);
+            }
+
 
             if (ubatch.is_pos_2d()) {
                 cheese_kv_cell_ext ext {
@@ -2268,4 +2279,61 @@ void cheese_kv_cache_context::set_input_kq_mask(ggml_tensor * dst, const cheese_
 
 void cheese_kv_cache_context::set_input_pos_bucket(ggml_tensor * dst, const cheese_ubatch * ubatch) const {
     kv->set_input_pos_bucket(dst, ubatch);
+}
+
+void cheese_kv_cache::squeeze(float threshold) {
+#ifdef CHEESE_CONTEXT_SQUEEZER
+    int aggr = (int)(threshold * 10.0f);
+    if (aggr > 9) aggr = 9;
+    if (aggr < 0) aggr = 0;
+
+    for (uint32_t s = 0; s < n_stream; ++s) {
+        auto & cells = v_cells[s];
+        
+        std::map<cheese_pos, cheese_token> pos_to_token;
+        for (uint32_t i = 0; i < cells.size(); ++i) {
+            if (!cells.is_empty(i)) {
+                pos_to_token[cells.pos_get(i)] = cells.token_get(i);
+            }
+        }
+        
+        if (pos_to_token.empty()) continue;
+
+        std::string full_text;
+        const auto & vocab = model.vocab;
+        std::vector<std::pair<size_t, cheese_pos>> text_offset_to_pos;
+
+        for (auto const& [pos, token] : pos_to_token) {
+            if (token < 0) continue;
+            char piece[256];
+            int n = vocab.token_to_piece(token, piece, sizeof(piece), 0, true);
+            if (n > 0) {
+                text_offset_to_pos.push_back({full_text.size(), pos});
+                full_text.append(piece, n);
+            }
+        }
+
+        if (full_text.empty()) continue;
+
+        csq_view in = { full_text.c_str(), full_text.size() };
+        csq_buf out;
+        if (csq_squeeze_ex(in, aggr, &out) == CSQ_OK) {
+            std::string squeezed(out.data, out.len);
+            for (auto const& [offset, pos] : text_offset_to_pos) {
+                cheese_token token = pos_to_token[pos];
+                char piece[256];
+                int n = vocab.token_to_piece(token, piece, sizeof(piece), 0, true);
+                if (n > 0) {
+                    std::string segment(piece, n);
+                    if (squeezed.find(segment) == std::string::npos) {
+                        seq_rm(-1, pos, pos + 1);
+                    }
+                }
+            }
+            csq_free(&out);
+        }
+    }
+#else
+    (void)threshold;
+#endif
 }

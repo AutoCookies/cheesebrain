@@ -172,6 +172,28 @@ license_add_file("cheese.cpp" "LICENSE")
 # 3rd-party
 #
 
+# edge target optimization
+option(CHEESE_EDGE_TARGET "cheese: optimize for edge devices (disable unused backends)" OFF)
+if (ANDROID OR (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64"))
+    set(CHEESE_EDGE_TARGET ON CACHE BOOL "cheese: optimize for edge devices" FORCE)
+endif()
+
+# modular backends
+option(CHEESE_BACKEND_CUDA   "cheese: enable CUDA backend"   ON)
+option(CHEESE_BACKEND_METAL  "cheese: enable Metal backend"  ON)
+option(CHEESE_BACKEND_VULKAN "cheese: enable Vulkan backend" ON)
+
+if (CHEESE_EDGE_TARGET)
+    set(CHEESE_BACKEND_CUDA   OFF CACHE BOOL "" FORCE)
+    set(CHEESE_BACKEND_METAL  OFF CACHE BOOL "" FORCE)
+    option(CHEESE_BACKEND_VULKAN "cheese: enable Vulkan backend" ON)
+endif()
+
+# Apply to ggml
+set(GGML_CUDA   ${CHEESE_BACKEND_CUDA}   CACHE BOOL \"\" FORCE)
+set(GGML_METAL  ${CHEESE_BACKEND_METAL}  CACHE BOOL \"\" FORCE)
+set(GGML_VULKAN ${CHEESE_BACKEND_VULKAN} CACHE BOOL \"\" FORCE)
+
 if (CHEESE_USE_SYSTEM_GGML)
     message(STATUS "Using system-provided libggml, skipping ggml build")
     find_package(ggml REQUIRED)
@@ -183,6 +205,19 @@ if (NOT TARGET ggml AND NOT CHEESE_USE_SYSTEM_GGML)
     set(GGML_BUILD_COMMIT ${CHEESE_BUILD_COMMIT})
     add_subdirectory(ggml)
     # ... otherwise assume ggml is added by a parent CMakeLists.txt
+endif()
+
+# palloc
+option(CHEESE_PALLOC "cheese: use palloc (mimalloc-based) allocator" ON)
+if (CHEESE_PALLOC)
+    set(PA_BUILD_TESTS OFF CACHE BOOL "Build palloc tests" FORCE)
+    add_subdirectory(third_party/palloc)
+endif()
+
+# contextsqueezer
+option(CHEESE_CONTEXT_SQUEEZER "cheese: use contextsqueezer for token squeezing" ON)
+if (CHEESE_CONTEXT_SQUEEZER)
+    add_subdirectory(third_party/contextsqueezer/native)
 endif()
 
 #

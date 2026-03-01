@@ -23,6 +23,8 @@ add_library(cheese
             cheese-kv-cache.cpp
             cheese-kv-cache-iswa.cpp
             cheese-memory.cpp
+            cheese-power.cpp
+
             cheese-memory-hybrid.cpp
             cheese-memory-hybrid-iswa.cpp
             cheese-memory-recurrent.cpp
@@ -161,6 +163,16 @@ target_include_directories(cheese PUBLIC ../include)
 target_compile_features   (cheese PRIVATE cxx_std_17) # don't bump
 
 target_link_libraries(cheese PUBLIC ggml)
+
+if (CHEESE_PALLOC)
+    target_link_libraries(cheese PRIVATE palloc-static)
+    target_compile_definitions(cheese PRIVATE CHEESE_PALLOC)
+endif()
+
+if (CHEESE_CONTEXT_SQUEEZER)
+    target_link_libraries(cheese PRIVATE contextsqueeze)
+    target_compile_definitions(cheese PRIVATE CHEESE_CONTEXT_SQUEEZER)
+endif()
 
 if (BUILD_SHARED_LIBS)
     set_target_properties(cheese PROPERTIES POSITION_INDEPENDENT_CODE ON)

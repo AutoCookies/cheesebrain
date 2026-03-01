@@ -19,6 +19,10 @@
   - **x86**: Optimized for AVX, AVX2, AVX512, and AMX.
   - **NVIDIA**: High-performance CUDA kernels for discrete GPUs.
 - **Efficiency**: Advanced 1.5-bit to 8-bit quantization for reduced memory footprint and lightning-fast execution.
+- **Edge Optimized (v1.0.0)**: 
+  - **palloc**: High-performance, zero-fragmentation memory allocation.
+  - **Context Squeezer**: Intelligent, text-aware KV cache pruning to prevent OOM.
+  - **Power Awareness**: Dynamic thread scaling based on thermal and battery state.
 - **Extensible**: Supports a wide range of state-of-the-art models via GGUF format compatibility.
 
 ## Quick Start
@@ -29,7 +33,7 @@ Cheese is designed to be productive from minute one.
 Build from source for the best performance on your specific hardware:
 
 ```bash
-cmake -B build
+cmake -B build -DCHEESE_EDGE_TARGET=ON # For edge devices
 cmake --build build --config Release
 ```
 

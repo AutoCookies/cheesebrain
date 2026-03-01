@@ -279,3 +279,9 @@ target_link_libraries(${TEST_TARGET} PRIVATE cheese)
 
 cheese_build_and_test(test-alloc.cpp)
 target_include_directories(test-alloc PRIVATE ${PROJECT_SOURCE_DIR}/ggml/src)
+
+cheese_build_and_test(test-edge.cpp)
+target_include_directories(test-edge PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_include_directories(test-edge PRIVATE ${PROJECT_SOURCE_DIR}/third_party/palloc/include)
+target_include_directories(test-edge PRIVATE ${PROJECT_SOURCE_DIR}/third_party/contextsqueezer/native/include)
+target_link_libraries(test-edge PRIVATE palloc contextsqueeze)

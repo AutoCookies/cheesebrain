@@ -37,6 +37,7 @@ public:
             ext[i].reset();
             shift[i] =  0;
             seq[i].reset();
+            token[i] = -1;
         }
 
         has_shift = false;
@@ -65,6 +66,7 @@ public:
         ext.resize(n);
         shift.resize(n);
         seq.resize(n);
+        token.resize(n);
 
         reset();
     }
@@ -130,6 +132,7 @@ public:
             res.pos[j] = pos[idx];
             res.ext[j] = ext[idx];
             res.seq[j] = seq[idx];
+            res.token[j] = token[idx];
 
             assert(shift[idx] == 0);
         }
@@ -149,6 +152,7 @@ public:
             res.pos[j] = pos[idx];
             res.ext[j] = ext[idx];
             res.seq[j] = seq[idx];
+            res.token[j] = token[idx];
 
             assert(shift[idx] == 0);
         }
@@ -178,6 +182,7 @@ public:
             pos[idx] = other.pos[j];
             ext[idx] = other.ext[j];
             seq[idx] = other.seq[j];
+            token[idx] = other.token[j];
 
             if (pos[idx] != -1) {
                 seq_pos_add(i + j);
@@ -209,6 +214,7 @@ public:
             pos[idx] = other.pos[j];
             ext[idx] = other.ext[j];
             seq[idx] = other.seq[j];
+            token[idx] = other.token[j];
 
             if (pos[idx] != -1) {
                 seq_pos_add(idx);
@@ -229,6 +235,7 @@ public:
         pos[i] = -1;
         ext[i].reset();
         shift[i] = 0;
+        token[i] = -1;
 
         used.erase(i);
     }
@@ -248,6 +255,7 @@ public:
             pos[i] = -1;
             ext[i].reset();
             shift[i] = 0;
+            token[i] = -1;
 
             used.erase(i);
 
@@ -278,6 +286,7 @@ public:
             pos[i] = -1;
             ext[i].reset();
             shift[i] = 0;
+            token[i] = -1;
 
             used.erase(i);
 
@@ -366,6 +375,11 @@ public:
 
         return pos[i];
     }
+    
+    cheese_token token_get(uint32_t i) const {
+        assert(i < token.size());
+        return token[i];
+    }
 
     const cheese_kv_cell_ext & ext_get(uint32_t i) const {
         assert(i < pos.size());
@@ -398,8 +412,12 @@ public:
         assert(seq[i].none());
 
         pos[i] = p;
-
         used.insert(i);
+    }
+
+    void token_set(uint32_t i, cheese_token t) {
+        assert(i < token.size());
+        token[i] = t;
     }
 
     void ext_set(uint32_t i, cheese_kv_cell_ext p) {
@@ -425,6 +443,7 @@ public:
             seq[i].reset();
             pos[i] = -1;
             shift[i] = 0;
+            token[i] = -1;
 
             used.erase(i);
 
@@ -482,6 +501,8 @@ private:
     //   }
     //
     std::vector<cheese_pos> shift;
+    
+    std::vector<cheese_token> token;
 
     using seq_set_t = std::bitset<CHEESE_MAX_SEQ>;
 

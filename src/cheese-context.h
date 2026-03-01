@@ -5,6 +5,8 @@
 #include "cheese-graph.h"
 #include "cheese-adapter.h"
 #include "cheese-impl.h"
+#include "cheese-power.h"
+
 
 #include "ggml-cpp.h"
 #include "ggml-opt.h"
@@ -33,7 +35,7 @@ struct cheese_memory_breakdown_data {
     }
 };
 
-struct cheese_context {
+struct cheese_context : public cheese_power_state_observer {
     // init scheduler and compute buffers, reserve worst-case graphs
     cheese_context(
             const cheese_model & model,
@@ -98,6 +100,9 @@ struct cheese_context {
     void detach_threadpool();
 
     void set_n_threads(int32_t n_threads, int32_t n_threads_batch);
+
+    // cheese_power_state_observer
+    void on_power_state_changed(const cheese_power_state & state) override;
 
     void set_abort_callback(bool (*abort_callback)(void * data), void * abort_callback_data);
 

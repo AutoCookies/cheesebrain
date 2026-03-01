@@ -5,6 +5,14 @@
 #include <string>
 #include <vector>
 
+#ifdef CHEESE_PALLOC
+#include "palloc.h"
+#endif
+
+#ifdef CHEESE_CONTEXT_SQUEEZER
+#include "contextsqueeze.h"
+#endif
+
 #ifdef __GNUC__
 #    if defined(__MINGW32__) && !defined(__clang__)
 #        define CHEESE_ATTRIBUTE_FORMAT(...) __attribute__((format(gnu_printf, __VA_ARGS__)))

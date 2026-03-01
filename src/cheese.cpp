@@ -907,7 +907,13 @@ static struct cheese_model * cheese_model_load_from_file_impl(
         };
     }
 
+#ifdef CHEESE_PALLOC
+    cheese_model * model = (cheese_model *) pa_malloc(sizeof(cheese_model));
+    new (model) cheese_model(params);
+#else
     cheese_model * model = new cheese_model(params);
+#endif
+
 
     // create list of devices to use with this model
     if (params.devices) {

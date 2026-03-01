@@ -357,9 +357,13 @@ cheese_context::cheese_context(
             sampling.token_ids_full_vocab[i] = i;
         }
     }
+    
+    cheese_power_monitor_add_observer(this);
 }
 
+
 cheese_context::~cheese_context() {
+    cheese_power_monitor_remove_observer(this);
     if (!model.hparams.no_alloc) {
         for (size_t i = 0; i < backend_ptrs.size(); ++i) {
             ggml_backend_t             backend = backend_ptrs[i];
@@ -2860,7 +2864,12 @@ cheese_context * cheese_init_from_model(
     }
 
     try {
+#ifdef CHEESE_PALLOC
+        auto * ctx = (cheese_context *) pa_malloc(sizeof(cheese_context));
+        new (ctx) cheese_context(*model, params);
+#else
         auto * ctx = new cheese_context(*model, params);
+#endif
         return ctx;
     } catch (const std::exception & err) {
         CHEESE_LOG_ERROR("%s: failed to initialize the context: %s\n", __func__, err.what());
@@ -2877,8 +2886,16 @@ cheese_context * cheese_new_context_with_model(
 }
 
 void cheese_free(cheese_context * ctx) {
+#ifdef CHEESE_PALLOC
+    if (ctx) {
+        ctx->~cheese_context();
+        pa_free(ctx);
+    }
+#else
     delete ctx;
+#endif
 }
+
 
 uint32_t cheese_n_ctx(const cheese_context * ctx) {
     return ctx->n_ctx();
@@ -3509,4 +3526,27 @@ void cheese_opt_epoch(
         idata_split,
         callback_train,
         callback_eval);
+}
+
+void cheese_context::on_power_state_changed(const cheese_power_state & state) {
+    int32_t n_threads = cparams.n_threads;
+    int32_t n_threads_batch = cparams.n_threads_batch;
+
+    bool changed = false;
+
+    if (state.thermal >= CHEESE_THERMAL_STATE_HIGH) {
+        n_threads = std::max(1, n_threads / 2);
+        n_threads_batch = std::max(1, n_threads_batch / 2);
+        CHEESE_LOG_WARN("%s: high thermal pressure detected, reducing threads to %d/%d\n", __func__, n_threads, n_threads_batch);
+        changed = true;
+    } else if (state.profile == CHEESE_POWER_PROFILE_POWER_SAVE || state.battery_level < 0.15f) {
+        n_threads = std::max(1, n_threads / 2);
+        n_threads_batch = std::max(1, n_threads_batch / 2);
+        CHEESE_LOG_WARN("%s: low battery or power save mode, reducing threads to %d/%d\n", __func__, n_threads, n_threads_batch);
+        changed = true;
+    }
+
+    if (changed) {
+        set_n_threads(n_threads, n_threads_batch);
+    }
 }
