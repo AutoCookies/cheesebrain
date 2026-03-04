@@ -149,6 +149,10 @@ struct server_task {
     std::string             cli_prompt;
     std::vector<raw_buffer> cli_files;
 
+    // optional formatted prompt string for PromptBuilder (pomaicache / context squeeze).
+    // Set when prompt is a single string (completion or chat after template apply).
+    std::string             prompt_string;
+
     server_task_type type;
 
     // used by SERVER_TASK_TYPE_SLOT_SAVE, SERVER_TASK_TYPE_SLOT_RESTORE, SERVER_TASK_TYPE_SLOT_ERASE
@@ -271,6 +275,14 @@ struct result_timings {
     // Optional speculative metrics - only included when > 0
     int32_t draft_n = 0;
     int32_t draft_n_accepted = 0;
+
+    // Pomai 3-combo: compression, cache, palloc, cost simulation (only set when non-default)
+    double compression_ratio       = 1.0;
+    uint64_t cache_read_tokens     = 0;
+    uint64_t cache_creation_tokens = 0;
+    double cache_savings_ratio     = 0.0;
+    size_t arena_bytes_used        = 0;
+    double effective_input_cost    = -1.0;  // simulated input token cost (10% discount for cached), -1 = not set
 
     json to_json() const;
 };
@@ -513,6 +525,16 @@ struct server_task_result_metrics : server_task_result {
 
     uint64_t n_decode_total     = 0;
     uint64_t n_busy_slots_total = 0;
+
+    // Pomai 3-combo: compression, cache hit/miss, palloc, effective cost simulation
+    uint64_t cache_read_tokens_total     = 0;
+    uint64_t cache_creation_tokens_total = 0;
+    uint64_t cache_hits_total            = 0;
+    uint64_t cache_misses_total          = 0;
+    double   compression_ratio_sum       = 0.0;
+    uint64_t compression_ratio_count     = 0;
+    size_t   arena_bytes_used_max        = 0;
+    double   effective_input_cost_total  = 0.0;
 
     // while we can also use std::vector<server_slot> this requires copying the slot object which can be quite messy
     // therefore, we use json to temporarily store the slot.to_json() result

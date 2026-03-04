@@ -533,6 +533,26 @@ json result_timings::to_json() const {
         base["draft_n_accepted"] = draft_n_accepted;
     }
 
+    // Pomai 3-combo: compression, cache, palloc, cost simulation
+    if (compression_ratio != 1.0) {
+        base["compression_ratio"] = compression_ratio;
+    }
+    if (cache_read_tokens > 0) {
+        base["cache_read_tokens"] = cache_read_tokens;
+    }
+    if (cache_creation_tokens > 0) {
+        base["cache_creation_tokens"] = cache_creation_tokens;
+    }
+    if (cache_savings_ratio > 0.0) {
+        base["cache_savings_ratio"] = cache_savings_ratio;
+    }
+    if (arena_bytes_used > 0) {
+        base["arena_bytes_used"] = arena_bytes_used;
+    }
+    if (effective_input_cost >= 0.0) {
+        base["effective_input_cost"] = effective_input_cost;
+    }
+
     return base;
 }
 
@@ -1742,7 +1762,7 @@ json server_task_result_error::to_json() {
 // server_task_result_metrics
 //
 json server_task_result_metrics::to_json() {
-    return json {
+    json base = {
         { "idle",                            n_idle_slots },
         { "processing",                      n_processing_slots },
         { "deferred",                        n_tasks_deferred },
@@ -1757,7 +1777,7 @@ json server_task_result_metrics::to_json() {
 
         { "n_prompt_tokens_processed",       n_prompt_tokens_processed },
         { "t_prompt_processing",             t_prompt_processing },
-        { "n_tokens_predicted",              n_tokens_predicted },
+        { "n_tokens_predicted",             n_tokens_predicted },
         { "t_tokens_generation",             t_tokens_generation },
 
         { "n_decode_total",                  n_decode_total },
@@ -1765,6 +1785,23 @@ json server_task_result_metrics::to_json() {
 
         { "slots",                           slots_data },
     };
+    if (cache_read_tokens_total > 0 || cache_creation_tokens_total > 0 || cache_hits_total > 0 || cache_misses_total > 0) {
+        base["cache_read_tokens_total"]     = cache_read_tokens_total;
+        base["cache_creation_tokens_total"] = cache_creation_tokens_total;
+        base["cache_hits_total"]             = cache_hits_total;
+        base["cache_misses_total"]          = cache_misses_total;
+    }
+    if (compression_ratio_count > 0) {
+        base["compression_ratio_avg"]   = compression_ratio_sum / compression_ratio_count;
+        base["compression_ratio_count"]  = compression_ratio_count;
+    }
+    if (arena_bytes_used_max > 0) {
+        base["arena_bytes_used_max"] = arena_bytes_used_max;
+    }
+    if (effective_input_cost_total > 0.0) {
+        base["effective_input_cost_total"] = effective_input_cost_total;
+    }
+    return base;
 }
 
 //

@@ -185,6 +185,18 @@ if (NOT TARGET ggml AND NOT CHEESE_USE_SYSTEM_GGML)
     # ... otherwise assume ggml is added by a parent CMakeLists.txt
 endif()
 
+# Optional: pomaicache + contextsqueezer for server prompt-prefix cache and 3-combo tests (build before tools/tests)
+if (CHEESE_BUILD_COMMON AND CHEESE_BUILD_TOOLS AND (CHEESE_BUILD_SERVER OR CHEESE_BUILD_TESTS))
+    option(CHEESE_PROMPT_CACHE_POMAI "Build server with pomaicache + contextsqueezer prompt prefix cache" ON)
+    if (CHEESE_PROMPT_CACHE_POMAI AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/pomaicache/CMakeLists.txt)
+        set(BUILD_PYTHON_BINDINGS OFF CACHE BOOL "Disable pomaicache Python bindings when building as subproject")
+        add_subdirectory(third_party/pomaicache)
+    endif()
+    if (CHEESE_PROMPT_CACHE_POMAI AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/contextsqueezer/native/CMakeLists.txt)
+        add_subdirectory(third_party/contextsqueezer/native)
+    endif()
+endif()
+
 #
 # build the library
 #

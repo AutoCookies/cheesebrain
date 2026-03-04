@@ -11,6 +11,11 @@
 #include "speculative.h"
 #include "mtmd.h"
 #include "mtmd-helper.h"
+#include "palloc/arena_pomai.h"
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+#include "cheesebrain/prompt_builder.h"
+#include "pomaicache.h"
+#endif
 
 #include <cstddef>
 #include <cinttypes>
@@ -162,6 +167,16 @@ struct server_slot {
     int32_t n_draft_total = 0;      // Total draft tokens generated
     int32_t n_draft_accepted = 0;   // Draft tokens actually accepted
 
+    // Per-slot Pomai arena for query-local allocations
+    pa_arena_t * arena = nullptr;
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+    // When set, use these instead of task->tokens for prompt decode (from PromptBuilder).
+    std::unique_ptr<server_tokens> effective_input_tokens;
+    int32_t n_past_pomai = 0;       // cached prefix length when effective_input_tokens is set
+    prompt_metrics pomai_metrics;   // compression / cache hit metrics from PromptBuilder
+#endif
+
     void reset() {
         SLT_DBG(*this, "%s", "\n");
 
@@ -192,6 +207,16 @@ struct server_slot {
 
         // clear alora start
         alora_invocation_start = -1;
+
+        // reset per-slot arena (if any) to reclaim query-local allocations
+        if (arena) {
+            p_arena_reset(arena);
+        }
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+        effective_input_tokens.reset();
+        n_past_pomai = 0;
+#endif
     }
 
     void init_sampler() const {
@@ -325,19 +350,33 @@ struct server_slot {
 
         timings.prompt_n            = n_prompt_tokens_processed;
         timings.prompt_ms           = t_prompt_processing;
-        timings.prompt_per_token_ms = t_prompt_processing / n_prompt_tokens_processed;
-        timings.prompt_per_second   = 1e3 / t_prompt_processing * n_prompt_tokens_processed;
+        timings.prompt_per_token_ms = n_prompt_tokens_processed > 0 ? t_prompt_processing / n_prompt_tokens_processed : 0.0;
+        timings.prompt_per_second   = t_prompt_processing > 0.0 ? 1e3 / t_prompt_processing * n_prompt_tokens_processed : 0.0;
 
         timings.predicted_n            = n_decoded;
         timings.predicted_ms           = t_token_generation;
-        timings.predicted_per_token_ms = t_token_generation / n_decoded;
-        timings.predicted_per_second   = 1e3 / t_token_generation * n_decoded;
+        timings.predicted_per_token_ms = n_decoded > 0 ? t_token_generation / n_decoded : 0.0;
+        timings.predicted_per_second   = t_token_generation > 0.0 ? 1e3 / t_token_generation * n_decoded : 0.0;
 
         // Add speculative metrics
         if (n_draft_total > 0) {
             timings.draft_n          = n_draft_total;
             timings.draft_n_accepted = n_draft_accepted;
         }
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+        const prompt_metrics & pm = pomai_metrics;
+        timings.compression_ratio       = pm.compression_ratio;
+        timings.cache_read_tokens       = pm.cache_read_tokens;
+        timings.cache_creation_tokens   = pm.cache_creation_tokens;
+        timings.cache_savings_ratio     = pm.cache_savings_ratio;
+        timings.arena_bytes_used        = pm.arena_bytes_used;
+        if (n_prompt_tokens_processed > 0) {
+            const uint64_t n_in = static_cast<uint64_t>(n_prompt_tokens_processed);
+            const uint64_t c_read = pm.cache_read_tokens;
+            timings.effective_input_cost = static_cast<double>(n_in - c_read) + static_cast<double>(c_read) * 0.1;
+        }
+#endif
 
         return timings;
     }
@@ -478,6 +517,18 @@ struct server_metrics {
     uint64_t n_decode_total     = 0;
     uint64_t n_busy_slots_total = 0;
 
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+    // Pomai 3-combo: compression, cache hit/miss, palloc, effective cost simulation
+    uint64_t cache_read_tokens_total     = 0;
+    uint64_t cache_creation_tokens_total = 0;
+    uint64_t cache_hits_total            = 0;
+    uint64_t cache_misses_total          = 0;
+    double   compression_ratio_sum       = 0.0;
+    uint64_t compression_ratio_count     = 0;
+    size_t   arena_bytes_used_max        = 0;
+    double   effective_input_cost_total  = 0.0;
+#endif
+
     void init() {
         t_start = ggml_time_us();
     }
@@ -489,6 +540,31 @@ struct server_metrics {
         t_prompt_processing_total       += slot.t_prompt_processing;
 
         n_tokens_max = std::max(n_tokens_max, (uint64_t) slot.prompt.n_tokens());
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+        const prompt_metrics & pm = slot.pomai_metrics;
+        cache_read_tokens_total     += pm.cache_read_tokens;
+        cache_creation_tokens_total += pm.cache_creation_tokens;
+        if (pm.cache_read_tokens > 0) {
+            cache_hits_total++;
+        } else if (slot.effective_input_tokens && slot.n_past_pomai == 0 && slot.prompt.n_tokens() > 0) {
+            cache_misses_total++;
+        }
+        if (pm.compression_ratio != 1.0 || pm.cache_read_tokens > 0 || pm.cache_creation_tokens > 0) {
+            compression_ratio_sum += pm.compression_ratio;
+            compression_ratio_count++;
+        }
+        if (pm.arena_bytes_used > 0) {
+            arena_bytes_used_max = std::max(arena_bytes_used_max, pm.arena_bytes_used);
+        }
+        // Effective token cost: 10% discount for cached tokens (simulation)
+        const uint64_t n_in = static_cast<uint64_t>(slot.n_prompt_tokens_processed);
+        const uint64_t c_read = pm.cache_read_tokens;
+        if (n_in > 0) {
+            const double cost = static_cast<double>(n_in - c_read) + static_cast<double>(c_read) * 0.1;
+            effective_input_cost_total += cost;
+        }
+#endif
     }
 
     void on_prediction(const server_slot & slot) {
@@ -571,6 +647,13 @@ private:
     int slots_debug = 0;
 
     std::unique_ptr<server_prompt_cache> prompt_cache;
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+    // Pomai prompt-prefix cache (Anthropic-style). Optional; when set, completion/chat
+    // flows can pass through PromptBuilder for compression and KV cache reuse.
+    std::unique_ptr<pomaicache::PomaiCache> pomai_cache;
+    prompt_cache_config pomai_prompt_config;
+#endif
 
     server_metrics metrics;
 
@@ -759,6 +842,11 @@ private:
             slot.mctx                   = mctx;
             slot.prompt.tokens.has_mtmd = mctx != nullptr;
 
+            // allocate per-slot Pomai arena for bounded query-local allocations
+            if (params_base.palloc_query_arena_bytes > 0) {
+                slot.arena = p_arena_create(params_base.palloc_query_arena_bytes);
+            }
+
             // try speculative decoding
             if (can_spec) {
                 slot.spec = common_speculative_init(params_base.speculative, slot.ctx);
@@ -813,6 +901,34 @@ private:
             SRV_WRN("%s", "prompt cache is disabled - use `--cache-ram N` to enable it\n");
         }
         SRV_WRN("%s", "for more info see https://github.com/ggml-org/cheese.cpp/pull/16391\n");
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+        // Pomai prompt-prefix cache (pomaicache) for Anthropic-style KV reuse
+        if (params_base.prompt_cache_enabled) {
+            try {
+                pomaicache::Config pomai_cfg;
+                pomai_cfg.memory_limit_bytes = static_cast<size_t>(std::max(0, params_base.cache_ram_mib)) * 1024u * 1024u;
+                if (pomai_cfg.memory_limit_bytes == 0) {
+                    pomai_cfg.memory_limit_bytes = 128u * 1024u * 1024u;
+                }
+                pomai_cfg.data_dir = fs_get_cache_directory() + "pomai/";
+                pomai_cache = std::make_unique<pomaicache::PomaiCache>(pomai_cfg);
+                pomai_prompt_config.prompt_cache_enabled           = params_base.prompt_cache_enabled;
+                pomai_prompt_config.prompt_cache_prefix_min_tokens = params_base.prompt_cache_prefix_min_tokens;
+                pomai_prompt_config.prompt_cache_ttl_ms            = params_base.prompt_cache_ttl_ms;
+                pomai_prompt_config.prompt_cache_max_breakpoints   = params_base.prompt_cache_max_breakpoints;
+                pomai_prompt_config.prompt_cache_lookback_blocks   = params_base.prompt_cache_lookback_blocks;
+                pomai_prompt_config.contextsqueeze_aggressiveness  = params_base.contextsqueeze_aggressiveness;
+                pomai_prompt_config.contextsqueeze_min_chars       = params_base.contextsqueeze_min_chars;
+                pomai_prompt_config.palloc_query_arena_bytes       = params_base.palloc_query_arena_bytes;
+                pomai_prompt_config.tokenizer_id                   = model_name;
+                SRV_WRN("pomai prompt cache enabled, data_dir = %s\n", pomai_cfg.data_dir.c_str());
+            } catch (const std::exception & e) {
+                SRV_WRN("pomai prompt cache init failed: %s (continuing without)\n", e.what());
+                pomai_cache.reset();
+            }
+        }
+#endif
 
         if (!params_base.model_alias.empty()) {
             // backward compat: use first alias as model name
@@ -1770,6 +1886,17 @@ private:
                     res->n_decode_total          = metrics.n_decode_total;
                     res->n_busy_slots_total      = metrics.n_busy_slots_total;
 
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                    res->cache_read_tokens_total     = metrics.cache_read_tokens_total;
+                    res->cache_creation_tokens_total = metrics.cache_creation_tokens_total;
+                    res->cache_hits_total             = metrics.cache_hits_total;
+                    res->cache_misses_total           = metrics.cache_misses_total;
+                    res->compression_ratio_sum        = metrics.compression_ratio_sum;
+                    res->compression_ratio_count      = metrics.compression_ratio_count;
+                    res->arena_bytes_used_max         = metrics.arena_bytes_used_max;
+                    res->effective_input_cost_total   = metrics.effective_input_cost_total;
+#endif
+
                     if (task.metrics_reset_bucket) {
                         metrics.reset_bucket();
                     }
@@ -2130,7 +2257,32 @@ private:
 
                 // this slot still has a prompt to be processed
                 if (slot.state == SLOT_STATE_PROCESSING_PROMPT || slot.state == SLOT_STATE_STARTED) {
-                    const auto & input_tokens = slot.task->tokens;
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                    // Try PromptBuilder (pomaicache + squeeze) when we have a single string prompt and no MTMD
+                    if (slot.state == SLOT_STATE_STARTED && pomai_cache && !slot.task->prompt_string.empty()
+                            && !slot.task->tokens.has_mtmd && slot.arena) {
+                        common_chat_params ccp;
+                        ccp.prompt = slot.task->prompt_string;
+                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config, slot.arena);
+                        prompt_metrics met;
+                        prompt_build_result res = pb.build_and_maybe_cache(ccp, slot.id, met);
+                        slot.pomai_metrics = met;
+                        if (!res.tokens.empty()) {
+                            slot.effective_input_tokens = std::make_unique<server_tokens>(res.tokens, false);
+                            slot.n_past_pomai = res.cached_prefix_tokens;
+                            if (res.cache_hit && res.cached_prefix_tokens > 0) {
+                                slot.prompt.tokens.clear();
+                                slot.prompt.tokens.insert(res.tokens);
+                            }
+                        }
+                    }
+#endif
+                    const server_tokens & input_tokens =
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                        slot.effective_input_tokens ? *slot.effective_input_tokens :
+#endif
+                        slot.task->tokens;
+                    const int n_input_tokens = static_cast<int>(input_tokens.size());
 
                     // TODO: maybe move branch to outside of this loop in the future
                     if (slot.state == SLOT_STATE_STARTED) {
@@ -2140,7 +2292,7 @@ private:
                         slot.state = SLOT_STATE_PROCESSING_PROMPT;
 
                         SLT_INF(slot, "new prompt, n_ctx_slot = %d, n_keep = %d, task.n_tokens = %d\n",
-                                slot.n_ctx, slot.task->params.n_keep, slot.task->n_tokens());
+                                slot.n_ctx, slot.task->params.n_keep, (int) input_tokens.size());
 
                         // print prompt tokens (for debugging)
                         /*if (1) {
@@ -2156,7 +2308,11 @@ private:
                         }*/
 
                         // keep track how many tokens we can reuse from the previous state
-                        int n_past = 0;
+                        int n_past =
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                            slot.effective_input_tokens ? slot.n_past_pomai :
+#endif
+                            0;
 
                         // empty prompt passed -> release the slot and send empty response
                         if (input_tokens.empty()) {
@@ -2177,39 +2333,43 @@ private:
                         }
 
                         if (!slot.can_split()) {
-                            if (slot.task->n_tokens() > n_ubatch) {
+                            if (n_input_tokens > n_ubatch) {
                                 send_error(slot,
                                            string_format(
                                                "input (%d tokens) is too large to process. increase the physical batch "
                                                "size (current batch size: %d)",
-                                               slot.task->n_tokens(), n_ubatch),
+                                               n_input_tokens, n_ubatch),
                                            ERROR_TYPE_SERVER);
                                 slot.release();
                                 continue;
                             }
 
-                            if (slot.task->n_tokens() > slot.n_ctx) {
+                            if (n_input_tokens > slot.n_ctx) {
                                 send_error(
                                     slot,
                                     string_format(
                                         "input (%d tokens) is larger than the max context size (%d tokens). skipping",
-                                        slot.task->n_tokens(), slot.n_ctx),
+                                        n_input_tokens, slot.n_ctx),
                                     ERROR_TYPE_EXCEED_CONTEXT_SIZE);
                                 slot.release();
                                 continue;
                             }
                         } else {
-                            if (slot.task->n_tokens() >= slot.n_ctx) {
+                            if (n_input_tokens >= slot.n_ctx) {
                                 send_error(slot,
                                            string_format("request (%d tokens) exceeds the available context size (%d "
                                                          "tokens), try increasing it",
-                                                         slot.task->n_tokens(), slot.n_ctx),
+                                                         n_input_tokens, slot.n_ctx),
                                            ERROR_TYPE_EXCEED_CONTEXT_SIZE);
                                 slot.release();
                                 continue;
                             }
 
-                            if (slot.task->params.cache_prompt) {
+                            if (
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                                !slot.effective_input_tokens &&
+#endif
+                                slot.task->params.cache_prompt) {
                                 // reuse any previously computed tokens that are common with the new prompt
                                 n_past = slot.prompt.tokens.get_common_prefix(input_tokens);
 
@@ -2396,8 +2556,8 @@ private:
                         }
 
                         // [TAG_PROMPT_LOGITS]
-                        if (n_past == slot.task->n_tokens() && n_past > 0) {
-                            SLT_WRN(slot, "need to evaluate at least 1 token for each active slot (n_past = %d, task.n_tokens() = %d)\n", n_past, slot.task->n_tokens());
+                        if (n_past == n_input_tokens && n_past > 0) {
+                            SLT_WRN(slot, "need to evaluate at least 1 token for each active slot (n_past = %d, task.n_tokens() = %d)\n", n_past, n_input_tokens);
                             n_past--;
                             SLT_WRN(slot, "n_past was set to %d\n", n_past);
                         }
@@ -2416,7 +2576,7 @@ private:
 
                     if (!slot.can_split()) {
                         // cannot fit the prompt in the current batch - will try next iter
-                        if (batch.n_tokens + slot.task->n_tokens() > n_batch) {
+                        if (batch.n_tokens + n_input_tokens > n_batch) {
                             continue;
                         }
                     }
@@ -2436,7 +2596,7 @@ private:
                     }
 
                     // check if we should process the image
-                    if (slot.prompt.n_tokens() < slot.task->n_tokens() && input_tokens[slot.prompt.n_tokens()] == CHEESE_TOKEN_NULL) {
+                    if (slot.prompt.n_tokens() < n_input_tokens && input_tokens[slot.prompt.n_tokens()] == CHEESE_TOKEN_NULL) {
                         // process the image
                         size_t n_tokens_out = 0;
                         int32_t res = input_tokens.process_chunk(ctx, mctx, slot.prompt.n_tokens(), slot.prompt.tokens.pos_next(), slot.id, n_tokens_out);
@@ -2488,7 +2648,7 @@ private:
                             );
 
                     // add prompt tokens for processing in the current batch
-                    while (slot.prompt.n_tokens() < slot.task->n_tokens() && batch.n_tokens < n_batch) {
+                    while (slot.prompt.n_tokens() < n_input_tokens && batch.n_tokens < n_batch) {
                         // get next token to process
                         cheese_token cur_tok = input_tokens[slot.prompt.n_tokens()];
                         if (cur_tok == CHEESE_TOKEN_NULL) {
@@ -2515,13 +2675,13 @@ private:
 
                         // process the last few tokens of the prompt separately in order to allow for a checkpoint to be created.
                         const int n_last = std::min(n_batch, 512);
-                        if (do_checkpoint && slot.task->n_tokens() == slot.prompt.n_tokens() + n_last) {
+                        if (do_checkpoint && n_input_tokens == slot.prompt.n_tokens() + n_last) {
                             break;
                         }
                     }
 
                     // entire prompt has been processed
-                    if (slot.prompt.n_tokens() == slot.task->n_tokens()) {
+                    if (slot.prompt.n_tokens() == n_input_tokens) {
                         slot.state = SLOT_STATE_DONE_PROMPT;
 
                         GGML_ASSERT(batch.n_tokens > 0);
@@ -2573,7 +2733,7 @@ private:
 
                         SLT_INF(slot, "prompt processing done, n_tokens = %d, batch.n_tokens = %d\n", slot.prompt.n_tokens(), batch.n_tokens);
                     } else {
-                        SLT_INF(slot, "prompt processing progress, n_tokens = %d, batch.n_tokens = %d, progress = %f\n", slot.prompt.n_tokens(), batch.n_tokens, (float) slot.prompt.n_tokens() / slot.task->n_tokens());
+                        SLT_INF(slot, "prompt processing progress, n_tokens = %d, batch.n_tokens = %d, progress = %f\n", slot.prompt.n_tokens(), batch.n_tokens, (float) slot.prompt.n_tokens() / n_input_tokens);
                     }
                 }
 
@@ -2737,6 +2897,14 @@ private:
 
                     // prompt evaluated for next-token prediction
                     slot.state = SLOT_STATE_GENERATING;
+
+#if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
+                    // Store prefix KV in pomaicache for future reuse (when we used PromptBuilder)
+                    if (pomai_cache && slot.effective_input_tokens && !slot.prompt.tokens.get_text_tokens().empty()) {
+                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config, slot.arena);
+                        pb.save_prefix_after_eval(slot.id, slot.prompt.tokens.get_text_tokens(), slot.pomai_metrics);
+                    }
+#endif
 
                     if (slot.can_speculate()) {
                         common_speculative_begin(slot.spec, slot.prompt.tokens.get_text_tokens());
@@ -2995,6 +3163,10 @@ std::unique_ptr<server_res_generator> server_routes::handle_completions_impl(
             task.id = rd.get_new_id();
 
             task.tokens = std::move(inputs[i]);
+            // optional prompt string for PromptBuilder (pomaicache / squeeze) when single string
+            if (prompt.is_string() && inputs.size() == 1) {
+                task.prompt_string = prompt.get<std::string>();
+            }
             task.params = server_task::params_from_json_cmpl(
                     ctx_server.vocab,
                     params,
@@ -3267,6 +3439,26 @@ void server_routes::init_routes() {
                     {"name",  "n_busy_slots_per_decode"},
                     {"help",  "Average number of busy slots per cheese_decode() call"},
                     {"value",  (float) res_task->n_busy_slots_total / std::max((float) res_task->n_decode_total, 1.f)}
+            }, {
+                    {"name",  "cache_read_tokens_total"},
+                    {"help",  "Total prompt tokens served from pomaicache (cache hits)."},
+                    {"value",  (uint64_t) res_task->cache_read_tokens_total}
+            }, {
+                    {"name",  "cache_creation_tokens_total"},
+                    {"help",  "Total prompt tokens written to pomaicache (new cache entries)."},
+                    {"value",  (uint64_t) res_task->cache_creation_tokens_total}
+            }, {
+                    {"name",  "cache_hits_total"},
+                    {"help",  "Number of requests that reused cached prefix KV."},
+                    {"value",  (uint64_t) res_task->cache_hits_total}
+            }, {
+                    {"name",  "cache_misses_total"},
+                    {"help",  "Number of requests that used PromptBuilder but had no cache hit."},
+                    {"value",  (uint64_t) res_task->cache_misses_total}
+            }, {
+                    {"name",  "effective_input_cost_total"},
+                    {"help",  "Simulated input token cost (10%% discount for cached tokens)."},
+                    {"value",  res_task->effective_input_cost_total}
             }}},
             {"gauge", {{
                     {"name",  "prompt_tokens_seconds"},
@@ -3284,6 +3476,14 @@ void server_routes::init_routes() {
                     {"name",  "requests_deferred"},
                     {"help",  "Number of requests deferred."},
                     {"value",  (uint64_t) res_task->n_tasks_deferred}
+            },{
+                    {"name",  "compression_ratio_avg"},
+                    {"help",  "Average context compression ratio (1.0 = no compression)."},
+                    {"value",  res_task->compression_ratio_count > 0 ? res_task->compression_ratio_sum / res_task->compression_ratio_count : 1.0}
+            },{
+                    {"name",  "arena_bytes_used_max"},
+                    {"help",  "Maximum palloc arena bytes used in a single request."},
+                    {"value",  (uint64_t) res_task->arena_bytes_used_max}
             }}}
         };
 
