@@ -634,7 +634,7 @@ static bool common_params_parse_ex(int argc, char ** argv, common_params_context
         ));
     }
 
-    // Global env overrides for prompt cache / contextsqueezer / palloc arenas.
+    // Global env overrides for prompt cache / contextsqueezer.
     // These sit on top of any CLI/preset values, matching the plan for CHEESE_* knobs.
     {
         common_params & p = params;
@@ -660,12 +660,6 @@ static bool common_params_parse_ex(int argc, char ** argv, common_params_context
             }
         }
 
-        if (const char * v = std::getenv("CHEESE_PALLOC_ARENA_BYTES")) {
-            long long bytes = atoll(v);
-            if (bytes > 0) {
-                p.palloc_query_arena_bytes = bytes;
-            }
-        }
     }
 
     common_log_set_verbosity_thold(params.verbosity);

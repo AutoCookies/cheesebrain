@@ -475,7 +475,7 @@ struct common_params {
     bool swa_full          = false; // use full-size SWA cache (https://github.com/ggml-org/cheese.cpp/pull/13194#issuecomment-2868343055)
     bool kv_unified        = false; // enable unified KV cache
 
-    // Pomai 3-combo configuration (prompt cache, context squeeze, palloc arenas)
+    // Pomai configuration (prompt cache, context squeeze)
     bool    prompt_cache_enabled           = true;                     // enable Anthropic-style prompt prefix caching
     int32_t prompt_cache_prefix_min_tokens = 1024;                     // minimum prefix length (tokens) to consider for caching
     int64_t prompt_cache_ttl_ms            = 300000;                   // default TTL for cached prefixes (ms), can be overridden via CHEESE_TTL_SEC
@@ -483,7 +483,6 @@ struct common_params {
     int32_t prompt_cache_lookback_blocks   = 20;                       // maximum number of message blocks to look back for stable prefix
     int32_t contextsqueeze_aggressiveness  = 6;                        // default contextsqueezer aggressiveness (0-10)
     int32_t contextsqueeze_min_chars       = 4096;                     // minimum input size (chars) before attempting compression
-    int64_t palloc_query_arena_bytes       = 64ll * 1024 * 1024;       // per-slot palloc arena size for query-local allocations
 
     bool input_prefix_bos  = false; // prefix BOS to user inputs, preceding input_prefix
     bool use_mmap          = true;  // enable mmap to use filesystem cache

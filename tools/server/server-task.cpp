@@ -533,7 +533,7 @@ json result_timings::to_json() const {
         base["draft_n_accepted"] = draft_n_accepted;
     }
 
-    // Pomai 3-combo: compression, cache, palloc, cost simulation
+    // Pomai: compression, cache, cost simulation
     if (compression_ratio != 1.0) {
         base["compression_ratio"] = compression_ratio;
     }

@@ -31,7 +31,6 @@ if (TARGET pomaicache)
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/third_party/contextsqueezer/native/include
         ${CMAKE_SOURCE_DIR}/third_party/pomaicache/include
-        ${CMAKE_SOURCE_DIR}/third_party/pomaicache/third_party/palloc/include
     )
     target_link_libraries(${TARGET} PRIVATE pomaicache contextsqueeze)
 endif()

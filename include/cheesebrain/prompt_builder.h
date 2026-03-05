@@ -31,7 +31,6 @@ struct prompt_cache_config {
     int32_t prompt_cache_lookback_blocks   = 20;
     int32_t contextsqueeze_aggressiveness  = 6;
     int32_t contextsqueeze_min_chars       = 4096;
-    int64_t palloc_query_arena_bytes       = 64ll * 1024 * 1024;
     std::string tokenizer_id               = "cheese";  // model/tokenizer id for cache keys
 };
 
@@ -56,15 +55,13 @@ struct prompt_build_result {
 // PromptBuilder ties together:
 //  - chat templates / prompt formatting
 //  - optional context squeezing
-//  - bounded arena-backed allocations
 //  - prompt prefix caching via pomaicache
 class prompt_builder {
 public:
     prompt_builder(
             cheese_context * ctx,
             pomaicache::PomaiCache * cache,
-            const prompt_cache_config & cfg,
-            void * arena_handle);
+            const prompt_cache_config & cfg);
 
     // Build tokens for the given chat parameters and collect basic metrics.
     // If prompt cache is enabled and a cached prefix matches, restores KV state
@@ -88,6 +85,5 @@ private:
     cheese_context *         ctx;
     pomaicache::PomaiCache * cache;
     prompt_cache_config      cfg;
-    void *                   arena_handle;
 };
 

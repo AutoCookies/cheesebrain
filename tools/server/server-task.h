@@ -276,7 +276,7 @@ struct result_timings {
     int32_t draft_n = 0;
     int32_t draft_n_accepted = 0;
 
-    // Pomai 3-combo: compression, cache, palloc, cost simulation (only set when non-default)
+    // Pomai: compression, cache, cost simulation (only set when non-default)
     double compression_ratio       = 1.0;
     uint64_t cache_read_tokens     = 0;
     uint64_t cache_creation_tokens = 0;
@@ -526,7 +526,7 @@ struct server_task_result_metrics : server_task_result {
     uint64_t n_decode_total     = 0;
     uint64_t n_busy_slots_total = 0;
 
-    // Pomai 3-combo: compression, cache hit/miss, palloc, effective cost simulation
+    // Pomai: compression, cache hit/miss, effective cost simulation
     uint64_t cache_read_tokens_total     = 0;
     uint64_t cache_creation_tokens_total = 0;
     uint64_t cache_hits_total            = 0;

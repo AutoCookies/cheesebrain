@@ -1,4 +1,4 @@
-// Unit tests for PromptBuilder (3-combo: pomaicache, contextsqueezer, palloc).
+// Unit tests for PromptBuilder (pomaicache + contextsqueezer).
 // Requires a GGUF model with vocab when run; skips gracefully if no model.
 //
 #ifdef NDEBUG
@@ -10,7 +10,6 @@
 #include "common.h"
 #include "get-model.h"
 #include "pomaicache.h"
-#include "palloc/arena_pomai.h"
 
 #include <cassert>
 #include <cstdio>
@@ -66,10 +65,6 @@ int main(int argc, char ** argv) {
     cfg.contextsqueeze_aggressiveness  = 1;
     cfg.tokenizer_id                   = "test";
 
-    const size_t arena_size = 1024 * 1024;
-    pa_arena_t * arena = static_cast<pa_arena_t *>(p_arena_create(arena_size));
-    assert(arena != nullptr);
-
     pomaicache::Config pomai_cfg;
     pomai_cfg.memory_limit_bytes = 4 * 1024 * 1024;
     pomai_cfg.data_dir           = "./test_pomai_data";
@@ -78,14 +73,13 @@ int main(int argc, char ** argv) {
         cache = std::make_unique<pomaicache::PomaiCache>(pomai_cfg);
     } catch (const std::exception & e) {
         std::fprintf(stderr, "test-prompt-builder: pomaicache init failed: %s, skipping\n", e.what());
-        p_arena_destroy(arena);
         return 0;
     }
 
     common_chat_params chat_params;
     chat_params.prompt = "Hello, world. This is a short prompt for testing.";
 
-    prompt_builder pb(ctx, cache.get(), cfg, arena);
+    prompt_builder pb(ctx, cache.get(), cfg);
     prompt_metrics metrics;
     prompt_build_result result = pb.build_and_maybe_cache(chat_params, 0, metrics);
 
@@ -99,7 +93,6 @@ int main(int argc, char ** argv) {
         assert(metrics.cache_creation_tokens == result.tokens.size() || metrics.cache_creation_tokens == 0);
     }
 
-    p_arena_reset(arena);
     prompt_metrics metrics2;
     prompt_build_result result2 = pb.build_and_maybe_cache(chat_params, 0, metrics2);
     assert(!result2.tokens.empty());
@@ -108,7 +101,6 @@ int main(int argc, char ** argv) {
         assert(result2.tokens[i] == result.tokens[i]);
     }
 
-    p_arena_destroy(arena);
     std::printf("test-prompt-builder: passed\n");
     return 0;
 }

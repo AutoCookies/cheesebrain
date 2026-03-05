@@ -2,7 +2,6 @@
 
 #include "chat.h"
 #include "common.h"
-#include "palloc_cxx_arena.h"
 #include "pomaicache.h"
 
 #include <algorithm>
@@ -55,12 +54,10 @@ std::string prompt_cache_key(const std::string & tokenizer_id, const std::string
 prompt_builder::prompt_builder(
         cheese_context * ctx,
         pomaicache::PomaiCache * cache,
-        const prompt_cache_config & cfg,
-        void * arena_handle)
+        const prompt_cache_config & cfg)
     : ctx(ctx)
     , cache(cache)
-    , cfg(cfg)
-    , arena_handle(arena_handle) {
+    , cfg(cfg) {
 }
 
 // Compress a single prompt string if it is large enough; otherwise return unchanged.
@@ -103,8 +100,6 @@ prompt_build_result prompt_builder::build_and_maybe_cache(
         cheese_seq_id slot_id,
         prompt_metrics & metrics) {
     prompt_build_result result;
-
-    palloc::PomaiArenaAllocator<char> char_alloc(arena_handle);
 
     double compression_ratio = 1.0;
     const std::string squeezed = squeeze_prompt_if_needed(

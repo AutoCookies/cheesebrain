@@ -1,9 +1,6 @@
-[submodule "third_party/palloc"]
-	path = third_party/palloc
-	url = https://github.com/AutoCookies/palloc
-[submodule "third_party/contextsqueezer"]
-	path = third_party/contextsqueezer
-	url = https://github.com/AutoCookies/contextsqueezer.git
 [submodule "third_party/pomaicache"]
 	path = third_party/pomaicache
 	url = https://github.com/AutoCookies/pomaicache.git
+[submodule "third_party/contextsqueezer"]
+	path = third_party/contextsqueezer
+	url = https://github.com/AutoCookies/contextsqueezer.git

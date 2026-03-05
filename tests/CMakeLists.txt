@@ -280,7 +280,7 @@ target_link_libraries(${TEST_TARGET} PRIVATE cheese)
 cheese_build_and_test(test-alloc.cpp)
 target_include_directories(test-alloc PRIVATE ${PROJECT_SOURCE_DIR}/ggml/src)
 
-# 3-combo PromptBuilder test (pomaicache + contextsqueezer + palloc); only when submodules are built
+# 3-combo PromptBuilder test (pomaicache + contextsqueezer); only when submodules are built
 if (TARGET pomaicache AND TARGET contextsqueeze)
     set(CHEESE_TEST_NAME test-prompt-builder)
     add_executable(${CHEESE_TEST_NAME}
@@ -294,7 +294,6 @@ if (TARGET pomaicache AND TARGET contextsqueeze)
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/third_party/pomaicache/include
         ${CMAKE_SOURCE_DIR}/third_party/contextsqueezer/native/include
-        ${CMAKE_SOURCE_DIR}/third_party/pomaicache/third_party/palloc/include
     )
     target_link_libraries(${CHEESE_TEST_NAME} PRIVATE common pomaicache contextsqueeze)
     if (CHEESE_TESTS_INSTALL)

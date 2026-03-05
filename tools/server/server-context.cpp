@@ -11,7 +11,8 @@
 #include "speculative.h"
 #include "mtmd.h"
 #include "mtmd-helper.h"
-#include "palloc/arena_pomai.h"
+
+// Optional Pomai prompt cache (pomaicache + contextsqueezer)
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
 #include "cheesebrain/prompt_builder.h"
 #include "pomaicache.h"
@@ -167,9 +168,6 @@ struct server_slot {
     int32_t n_draft_total = 0;      // Total draft tokens generated
     int32_t n_draft_accepted = 0;   // Draft tokens actually accepted
 
-    // Per-slot Pomai arena for query-local allocations
-    pa_arena_t * arena = nullptr;
-
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
     // When set, use these instead of task->tokens for prompt decode (from PromptBuilder).
     std::unique_ptr<server_tokens> effective_input_tokens;
@@ -207,11 +205,6 @@ struct server_slot {
 
         // clear alora start
         alora_invocation_start = -1;
-
-        // reset per-slot arena (if any) to reclaim query-local allocations
-        if (arena) {
-            p_arena_reset(arena);
-        }
 
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
         effective_input_tokens.reset();
@@ -518,7 +511,7 @@ struct server_metrics {
     uint64_t n_busy_slots_total = 0;
 
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
-    // Pomai 3-combo: compression, cache hit/miss, palloc, effective cost simulation
+    // Pomai: compression, cache hit/miss, effective cost simulation
     uint64_t cache_read_tokens_total     = 0;
     uint64_t cache_creation_tokens_total = 0;
     uint64_t cache_hits_total            = 0;
@@ -846,11 +839,6 @@ private:
             slot.mctx                   = mctx;
             slot.prompt.tokens.has_mtmd = mctx != nullptr;
 
-            // allocate per-slot Pomai arena for bounded query-local allocations
-            if (params_base.palloc_query_arena_bytes > 0) {
-                slot.arena = static_cast<pa_arena_t *>(p_arena_create(params_base.palloc_query_arena_bytes));
-            }
-
             // try speculative decoding
             if (can_spec) {
                 slot.spec = common_speculative_init(params_base.speculative, slot.ctx);
@@ -924,7 +912,6 @@ private:
                 pomai_prompt_config.prompt_cache_lookback_blocks   = params_base.prompt_cache_lookback_blocks;
                 pomai_prompt_config.contextsqueeze_aggressiveness  = params_base.contextsqueeze_aggressiveness;
                 pomai_prompt_config.contextsqueeze_min_chars       = params_base.contextsqueeze_min_chars;
-                pomai_prompt_config.palloc_query_arena_bytes       = params_base.palloc_query_arena_bytes;
                 pomai_prompt_config.tokenizer_id                   = model_name;
                 SRV_WRN("pomai prompt cache enabled, data_dir = %s\n", pomai_cfg.data_dir.c_str());
             } catch (const std::exception & e) {
@@ -2264,10 +2251,10 @@ private:
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
                     // Try PromptBuilder (pomaicache + squeeze) when we have a single string prompt and no MTMD
                     if (slot.state == SLOT_STATE_STARTED && pomai_cache && !slot.task->prompt_string.empty()
-                            && !slot.task->tokens.has_mtmd && slot.arena) {
+                            && !slot.task->tokens.has_mtmd) {
                         common_chat_params ccp;
                         ccp.prompt = slot.task->prompt_string;
-                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config, slot.arena);
+                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config);
                         prompt_metrics met;
                         prompt_build_result res = pb.build_and_maybe_cache(ccp, slot.id, met);
                         slot.pomai_metrics = met;
@@ -2905,7 +2892,7 @@ private:
 #if defined(CHEESE_HAVE_PROMPT_CACHE_POMAI)
                     // Store prefix KV in pomaicache for future reuse (when we used PromptBuilder)
                     if (pomai_cache && slot.effective_input_tokens && !slot.prompt.tokens.get_text_tokens().empty()) {
-                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config, slot.arena);
+                        prompt_builder pb(ctx, pomai_cache.get(), pomai_prompt_config);
                         pb.save_prefix_after_eval(slot.id, slot.prompt.tokens.get_text_tokens(), slot.pomai_metrics);
                     }
 #endif
@@ -3486,7 +3473,7 @@ void server_routes::init_routes() {
                     {"value",  res_task->compression_ratio_count > 0 ? res_task->compression_ratio_sum / res_task->compression_ratio_count : 1.0}
             },{
                     {"name",  "arena_bytes_used_max"},
-                    {"help",  "Maximum palloc arena bytes used in a single request."},
+                    {"help",  "Maximum arena bytes used in a single request (legacy metric)."},
                     {"value",  (uint64_t) res_task->arena_bytes_used_max}
             }}}
         };

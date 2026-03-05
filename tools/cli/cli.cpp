@@ -249,6 +249,11 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
+    // When using --simple-io, suppress log output to reduce risk of crash in log path
+    if (params.simple_io) {
+        common_log_set_verbosity_thold(-1);
+    }
+
     // TODO: maybe support it later?
     if (params.conversation_mode == COMMON_CONVERSATION_MODE_DISABLED) {
         console::error("--no-conversation is not supported by cheese-cli\n");
@@ -349,6 +354,7 @@ int main(int argc, char ** argv) {
         console::set_display(DISPLAY_TYPE_USER_INPUT);
         if (params.prompt.empty()) {
             console::log("\n> ");
+            console::flush(); // ensure prompt is visible before readline (avoids issues with --simple-io and no model)
             std::string line;
             bool another_line = true;
             do {
@@ -402,9 +408,47 @@ int main(int argc, char ** argv) {
             if (string_starts_with(buffer, "/model pull ")) {
                 std::string link = string_strip(buffer.substr(12));
                 common_params_model pulled;
-                if (cli_model_pull(link, params.hf_token, params.offline, pulled)) {
-                    params.model = pulled;
+                try {
+                    if (cli_model_pull(link, params.hf_token, params.offline, pulled)) {
+                        params.model = pulled;
+                        console::log("Loading model... ");
+                        console::flush();
+                        console::spinner::start();
+                        if (ctx_cli.ctx_server.load_model(params)) {
+                            console::spinner::stop();
+                            if (!inference_thread) {
+                                inference_thread = std::make_unique<std::thread>([&ctx_cli]() {
+                                    ctx_cli.ctx_server.start_loop();
+                                });
+                            }
+                            has_model = true;
+                            console::log("Model loaded: %s\n", ctx_cli.ctx_server.get_meta().model_name.c_str());
+                        } else {
+                            console::spinner::stop();
+                            console::error("Failed to load the model\n");
+                        }
+                    }
+                } catch (const std::exception & e) {
+                    console::spinner::stop();
+                    console::error("model pull failed: %s\n", e.what());
+                }
+                console::flush();
+                continue;
+            }
+            if (string_starts_with(buffer, "/model load ")) {
+                std::string path = string_strip(buffer.substr(12));
+                if (path.empty()) {
+                    console::error("Usage: /model load <path>\n");
+                    continue;
+                }
+                params.model.path = path;
+                params.model.url.clear();
+                params.model.hf_repo.clear();
+                params.model.hf_file.clear();
+                params.model.name.clear();
+                try {
                     console::log("Loading model... ");
+                    console::flush();
                     console::spinner::start();
                     if (ctx_cli.ctx_server.load_model(params)) {
                         console::spinner::stop();
@@ -419,38 +463,17 @@ int main(int argc, char ** argv) {
                         console::spinner::stop();
                         console::error("Failed to load the model\n");
                     }
-                }
-                continue;
-            }
-            if (string_starts_with(buffer, "/model load ")) {
-                std::string path = string_strip(buffer.substr(12));
-                if (path.empty()) {
-                    console::error("Usage: /model load <path>\n");
-                    continue;
-                }
-                params.model.path = path;
-                params.model.url.clear();
-                params.model.hf_repo.clear();
-                params.model.hf_file.clear();
-                params.model.name.clear();
-                console::log("Loading model... ");
-                console::spinner::start();
-                if (ctx_cli.ctx_server.load_model(params)) {
+                } catch (const std::exception & e) {
                     console::spinner::stop();
-                    if (!inference_thread) {
-                        inference_thread = std::make_unique<std::thread>([&ctx_cli]() {
-                            ctx_cli.ctx_server.start_loop();
-                        });
-                    }
-                    has_model = true;
-                    console::log("Model loaded: %s\n", ctx_cli.ctx_server.get_meta().model_name.c_str());
-                } else {
-                    console::spinner::stop();
-                    console::error("Failed to load the model\n");
+                    console::error("model load failed: %s\n", e.what());
                 }
+                console::flush();
                 continue;
             }
             console::error("No model loaded. Use /model pull <url> or /model load <path> first, or /exit to quit.\n");
+            if (params.single_turn) {
+                break; // exit cleanly in single-turn when no model instead of waiting for another prompt
+            }
             continue;
         }
 
