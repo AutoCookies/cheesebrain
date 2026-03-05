@@ -3,6 +3,7 @@
 #include "chat.h"
 #include "common.h"
 #include "palloc_cxx_arena.h"
+#include "pomaicache.h"
 
 #include <algorithm>
 #include <cstring>

@@ -9,8 +9,11 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "cheese.h"
+
+using cheese_tokens = std::vector<cheese_token>;
 
 struct common_chat_params;
 

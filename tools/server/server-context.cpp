@@ -844,7 +844,7 @@ private:
 
             // allocate per-slot Pomai arena for bounded query-local allocations
             if (params_base.palloc_query_arena_bytes > 0) {
-                slot.arena = p_arena_create(params_base.palloc_query_arena_bytes);
+                slot.arena = static_cast<pa_arena_t *>(p_arena_create(params_base.palloc_query_arena_bytes));
             }
 
             // try speculative decoding

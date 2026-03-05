@@ -67,7 +67,7 @@ int main(int argc, char ** argv) {
     cfg.tokenizer_id                   = "test";
 
     const size_t arena_size = 1024 * 1024;
-    pa_arena_t * arena = p_arena_create(arena_size);
+    pa_arena_t * arena = static_cast<pa_arena_t *>(p_arena_create(arena_size));
     assert(arena != nullptr);
 
     pomaicache::Config pomai_cfg;

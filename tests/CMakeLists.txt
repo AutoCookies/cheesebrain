@@ -288,6 +288,7 @@ if (TARGET pomaicache AND TARGET contextsqueeze)
         get-model.cpp
         ${CMAKE_SOURCE_DIR}/src/prompt_builder.cpp
     )
+    set_target_properties(${CHEESE_TEST_NAME} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
     target_compile_definitions(${CHEESE_TEST_NAME} PRIVATE CHEESE_HAVE_PROMPT_CACHE_POMAI)
     target_include_directories(${CHEESE_TEST_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/include

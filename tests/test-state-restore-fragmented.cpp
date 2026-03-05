@@ -13,6 +13,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 
 int main(int argc, char ** argv) {
     common_params params;
@@ -24,6 +25,18 @@ int main(int argc, char ** argv) {
 
     if (!common_params_parse(argc, argv, params, CHEESE_EXAMPLE_COMMON)) {
         return 1;
+    }
+
+    // Skip if model file is missing or too small (e.g. download was skipped)
+    std::ifstream f(params.model.path, std::ios::binary);
+    if (!f.good()) {
+        fprintf(stderr, "test-state-restore-fragmented: model file missing, skipping\n");
+        return 0;
+    }
+    f.seekg(0, std::ios::end);
+    if (f.tellg() < 1000) {
+        fprintf(stderr, "test-state-restore-fragmented: model file too small, skipping\n");
+        return 0;
     }
 
     common_init();
