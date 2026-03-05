@@ -1,6 +1,7 @@
 #include "common.h"
 #include "arg.h"
 #include "console.h"
+#include "download.h"
 // #include "log.h"
 
 #include "server-context.h"
@@ -20,13 +21,12 @@
 #endif
 
 const char * CHEESE_ASCII_LOGO = R"(
-▄▄ ▄▄
-██ ██
-██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
-██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
-██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
-                                    ██    ██
-                                    ▀▀    ▀▀
+  _____ _    _ ______ _____  ______ _____   ___  ____  _____ _   _ _____
+ / ____| |  | |  ____|  __ \|  ____|  __ \ / _ \|  _ \|_   _| \ | |_   _|
+| |    | |__| | |__  | |__) | |__  | |_) | | | | |_) | | | |  \| | | |
+| |    |  __  |  __| |  ___/|  __| |  _ <| | | |  _ <  | | | . ` | | |
+| |____| |  | | |____| |    | |____| |_) | |_| | |_) |_| |_| |\  |_| |_
+ \_____|_|  |_|______|_|    |______|____/ \___/|____/|_____|_| \_|_____|
 )";
 
 static std::atomic<bool> g_is_interrupted = false;
@@ -195,6 +195,51 @@ struct cli_context {
     }
 };
 
+// Resolve and download a model from a link (HuggingFace repo e.g. "user/model" or "user/model:Q4_K_M", or direct URL).
+// Returns true on success and sets out_model.path; returns false on failure (error printed to console).
+static bool cli_model_pull(const std::string & link, const std::string & hf_token, bool offline, common_params_model & out_model) {
+    out_model = {};
+    std::string link_stripped = string_strip(link);
+    if (link_stripped.empty()) {
+        console::error("model pull: empty link\n");
+        return false;
+    }
+    const bool looks_like_url = link_stripped.find("://") != std::string::npos
+        || string_starts_with(link_stripped, "http");
+    if (looks_like_url) {
+        out_model.url = link_stripped;
+        std::string f = link_stripped;
+        size_t q = f.find('?');
+        if (q != std::string::npos) f = f.substr(0, q);
+        size_t h = f.find('#');
+        if (h != std::string::npos) f = f.substr(0, h);
+        size_t last_slash = f.rfind('/');
+        out_model.path = fs_get_cache_file(last_slash != std::string::npos ? f.substr(last_slash + 1) : f);
+    } else {
+        // HuggingFace repo (e.g. user/model or user/model:Q4_K_M)
+        common_hf_file_res res = common_get_hf_file(link_stripped, hf_token, offline);
+        if (res.repo.empty() || res.ggufFile.empty()) {
+            console::error("model pull: could not resolve HuggingFace repo '%s'\n", link_stripped.c_str());
+            return false;
+        }
+        std::string endpoint = get_model_endpoint();
+        out_model.url = endpoint + res.repo + "/resolve/main/" + res.ggufFile;
+        std::string cache_name = res.repo + "_" + res.ggufFile;
+        string_replace_all(cache_name, "/", "_");
+        string_replace_all(cache_name, "\\", "_");
+        out_model.path = fs_get_cache_file(cache_name);
+        out_model.hf_repo = res.repo;
+        out_model.hf_file = res.ggufFile;
+        out_model.name = link_stripped;
+    }
+    console::log("Downloading model...\n");
+    if (!common_download_model(out_model, hf_token, offline)) {
+        console::error("model pull: download failed\n");
+        return false;
+    }
+    return true;
+}
+
 int main(int argc, char ** argv) {
     common_params params;
 
@@ -238,28 +283,22 @@ int main(int argc, char ** argv) {
     SetConsoleCtrlHandler(reinterpret_cast<PHANDLER_ROUTINE>(console_ctrl_handler), true);
 #endif
 
-    console::log("\nLoading model... "); // followed by loading animation
-    console::spinner::start();
-    if (!ctx_cli.ctx_server.load_model(params)) {
+    bool has_model = !params.model.path.empty();
+    std::unique_ptr<std::thread> inference_thread;
+
+    if (has_model) {
+        console::log("\nLoading model... "); // followed by loading animation
+        console::spinner::start();
+        if (!ctx_cli.ctx_server.load_model(params)) {
+            console::spinner::stop();
+            console::error("\nFailed to load the model\n");
+            return 1;
+        }
         console::spinner::stop();
-        console::error("\nFailed to load the model\n");
-        return 1;
-    }
-
-    console::spinner::stop();
-    console::log("\n");
-
-    std::thread inference_thread([&ctx_cli]() {
-        ctx_cli.ctx_server.start_loop();
-    });
-
-    auto inf = ctx_cli.ctx_server.get_meta();
-    std::string modalities = "text";
-    if (inf.has_inp_image) {
-        modalities += ", vision";
-    }
-    if (inf.has_inp_audio) {
-        modalities += ", audio";
+        console::log("\n");
+        inference_thread = std::make_unique<std::thread>([&ctx_cli]() {
+            ctx_cli.ctx_server.start_loop();
+        });
     }
 
     if (!params.system_prompt.empty()) {
@@ -270,24 +309,36 @@ int main(int argc, char ** argv) {
     }
 
     console::log("\n");
+    console::log("  CHEESE BRAIN\n\n");
     console::log("%s\n", CHEESE_ASCII_LOGO);
-    console::log("build      : %s\n", inf.build_info.c_str());
-    console::log("model      : %s\n", inf.model_name.c_str());
-    console::log("modalities : %s\n", modalities.c_str());
-    if (!params.system_prompt.empty()) {
-        console::log("using custom system prompt\n");
-    }
-    console::log("\n");
-    console::log("available commands:\n");
-    console::log("  /exit or Ctrl+C     stop or exit\n");
-    console::log("  /regen              regenerate the last response\n");
-    console::log("  /clear              clear the chat history\n");
-    console::log("  /read               add a text file\n");
-    if (inf.has_inp_image) {
-        console::log("  /image <file>       add an image file\n");
-    }
-    if (inf.has_inp_audio) {
-        console::log("  /audio <file>       add an audio file\n");
+    if (has_model) {
+        server_context_meta inf = ctx_cli.ctx_server.get_meta();
+        std::string modalities = "text";
+        if (inf.has_inp_image) modalities += ", vision";
+        if (inf.has_inp_audio) modalities += ", audio";
+        console::log("build      : %s\n", inf.build_info.c_str());
+        console::log("model      : %s\n", inf.model_name.c_str());
+        console::log("modalities : %s\n", modalities.c_str());
+        if (!params.system_prompt.empty()) {
+            console::log("using custom system prompt\n");
+        }
+        console::log("\n");
+        console::log("available commands:\n");
+        console::log("  /exit or Ctrl+C     stop or exit\n");
+        console::log("  /regen              regenerate the last response\n");
+        console::log("  /clear              clear the chat history\n");
+        console::log("  /read               add a text file\n");
+        if (inf.has_inp_image) {
+            console::log("  /image <file>       add an image file\n");
+        }
+        if (inf.has_inp_audio) {
+            console::log("  /audio <file>       add an audio file\n");
+        }
+    } else {
+        console::log("No model loaded.\n");
+        console::log("  /model pull <url|hf-repo>   download and load a model (e.g. user/model or user/model:Q4_K_M)\n");
+        console::log("  /model load <path>          load a model from a local file path\n");
+        console::log("  /exit or Ctrl+C             exit\n");
     }
     console::log("\n");
 
@@ -343,7 +394,71 @@ int main(int argc, char ** argv) {
 
         bool add_user_msg = true;
 
-        // process commands
+        // when no model is loaded, only allow model commands and exit
+        if (!has_model) {
+            if (string_starts_with(buffer, "/exit")) {
+                break;
+            }
+            if (string_starts_with(buffer, "/model pull ")) {
+                std::string link = string_strip(buffer.substr(12));
+                common_params_model pulled;
+                if (cli_model_pull(link, params.hf_token, params.offline, pulled)) {
+                    params.model = pulled;
+                    console::log("Loading model... ");
+                    console::spinner::start();
+                    if (ctx_cli.ctx_server.load_model(params)) {
+                        console::spinner::stop();
+                        if (!inference_thread) {
+                            inference_thread = std::make_unique<std::thread>([&ctx_cli]() {
+                                ctx_cli.ctx_server.start_loop();
+                            });
+                        }
+                        has_model = true;
+                        console::log("Model loaded: %s\n", ctx_cli.ctx_server.get_meta().model_name.c_str());
+                    } else {
+                        console::spinner::stop();
+                        console::error("Failed to load the model\n");
+                    }
+                }
+                continue;
+            }
+            if (string_starts_with(buffer, "/model load ")) {
+                std::string path = string_strip(buffer.substr(12));
+                if (path.empty()) {
+                    console::error("Usage: /model load <path>\n");
+                    continue;
+                }
+                params.model.path = path;
+                params.model.url.clear();
+                params.model.hf_repo.clear();
+                params.model.hf_file.clear();
+                params.model.name.clear();
+                console::log("Loading model... ");
+                console::spinner::start();
+                if (ctx_cli.ctx_server.load_model(params)) {
+                    console::spinner::stop();
+                    if (!inference_thread) {
+                        inference_thread = std::make_unique<std::thread>([&ctx_cli]() {
+                            ctx_cli.ctx_server.start_loop();
+                        });
+                    }
+                    has_model = true;
+                    console::log("Model loaded: %s\n", ctx_cli.ctx_server.get_meta().model_name.c_str());
+                } else {
+                    console::spinner::stop();
+                    console::error("Failed to load the model\n");
+                }
+                continue;
+            }
+            console::error("No model loaded. Use /model pull <url> or /model load <path> first, or /exit to quit.\n");
+            continue;
+        }
+
+        // process commands (when model is loaded) — guard: get_meta() is only valid after load_model()
+        if (!has_model) {
+            continue;
+        }
+        server_context_meta inf = ctx_cli.ctx_server.get_meta();
         if (string_starts_with(buffer, "/exit")) {
             break;
         } else if (string_starts_with(buffer, "/regen")) {
@@ -428,12 +543,15 @@ int main(int argc, char ** argv) {
     console::set_display(DISPLAY_TYPE_RESET);
 
     console::log("\nExiting...\n");
-    ctx_cli.ctx_server.terminate();
-    inference_thread.join();
+    if (inference_thread && inference_thread->joinable()) {
+        ctx_cli.ctx_server.terminate();
+        inference_thread->join();
+    }
 
-    // bump the log level to display timings
-    common_log_set_verbosity_thold(LOG_LEVEL_INFO);
-    cheese_memory_breakdown_print(ctx_cli.ctx_server.get_cheese_context());
+    if (has_model) {
+        common_log_set_verbosity_thold(LOG_LEVEL_INFO);
+        cheese_memory_breakdown_print(ctx_cli.ctx_server.get_cheese_context());
+    }
 
     return 0;
 }

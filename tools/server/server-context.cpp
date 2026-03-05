@@ -669,6 +669,12 @@ private:
     bool sleeping = false;
 
     void destroy() {
+        // Free batch only if it was initialized (load_model was called); must check before clearing ctx
+        const bool had_model = (ctx != nullptr);
+        if (had_model) {
+            cheese_batch_free(batch);
+        }
+
         cheese_init.reset();
         ctx = nullptr;
         model = nullptr;
@@ -681,8 +687,6 @@ private:
             common_speculative_free(slot.spec);
             slot.spec = nullptr;
         }
-
-        cheese_batch_free(batch);
     }
 
     void handle_sleeping_state(bool new_state) {

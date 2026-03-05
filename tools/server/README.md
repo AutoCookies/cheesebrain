@@ -2,7 +2,7 @@
 
 Fast, lightweight, pure C/C++ HTTP server based on [httplib](https://github.com/yhirose/cpp-httplib), [nlohmann::json](https://github.com/nlohmann/json) and **cheese.cpp**.
 
-Set of LLM REST APIs and a web UI to interact with cheese.cpp.
+Set of LLM REST APIs to interact with cheese.cpp. The server is **API-only by default** (no web UI); use `--webui` to enable the optional web UI.
 
 **Features:**
  * LLM inference of F16 and quantized models on GPU and CPU
@@ -17,7 +17,7 @@ Set of LLM REST APIs and a web UI to interact with cheese.cpp.
  * Prefilling of assistant messages similar to the Claude API
  * [Function calling](../../docs/function-calling.md) / tool use for ~any model
  * Speculative decoding
- * Easy-to-use web UI
+ * Optional easy-to-use web UI (disabled by default; use `--webui` to enable)
 
 For the full list of features, please refer to [server's changelog](https://github.com/ggml-org/cheese.cpp/issues/9291)
 

@@ -553,8 +553,8 @@ struct common_params {
 
     std::map<std::string, std::string> default_template_kwargs;
 
-    // webui configs
-    bool webui = true;
+    // webui configs (server is API-only by default; set true to serve the web UI)
+    bool webui = false;
     std::string webui_config_json;
 
     // "advanced" endpoints are disabled by default for better security

@@ -81,19 +81,21 @@ def test_load_split_model():
 
 def test_no_webui():
     global server
-    # default: webui enabled
+    # default: webui disabled (server is API-only)
     server.start()
     url = f"http://{server.server_host}:{server.server_port}"
+    res = requests.get(url)
+    assert res.status_code == 404
+    server.stop()
+
+    # with --webui: serve the web UI
+    server.webui = True
+    server.no_webui = None
+    server.start()
     res = requests.get(url)
     assert res.status_code == 200
     assert "<!doctype html>" in res.text
     server.stop()
-
-    # with --no-webui
-    server.no_webui = True
-    server.start()
-    res = requests.get(url)
-    assert res.status_code == 404
 
 
 def test_server_model_aliases_and_tags():

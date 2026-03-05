@@ -1,5 +1,14 @@
 # cheese.cpp/tools/cli
 
+Interactive chat CLI for cheesebrain. You can start with a model (`-m model.gguf` or `--hf-repo user/model`) or **start with no model** and pull one from the prompt.
+
+**Start without a model:** run `cheese-cli` with no `-m`/`--model`. You will see:
+- `/model pull <url|hf-repo>` — download and load a model (e.g. `ggml-org/models` or `user/model:Q4_K_M`, or a direct GGUF URL)
+- `/model load <path>` — load a model from a local file path
+- `/exit` — exit
+
+Example: `cheese-cli` then type `/model pull ggml-org/test-model-stories260K` to download and load that model, then chat.
+
 ## Usage
 
 <!-- HELP_START -->

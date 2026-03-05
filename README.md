@@ -40,7 +40,7 @@ Run your first model in seconds:
 # Chat with a model
 ./build/bin/cheese-cli -m model.gguf -cnv
 
-# Start an OpenAI-compatible server
+# Start an OpenAI-compatible API server (no UI by default; add --webui for the web UI)
 ./build/bin/cheese-server -m model.gguf --port 8080
 ```
 
