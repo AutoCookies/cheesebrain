@@ -72,7 +72,7 @@ cmake --build build --config Release
 
 ## BLAS Build
 
-Building the program with BLAS support may lead to some performance improvements in prompt processing using batch sizes higher than 32 (the default is 512). Using BLAS doesn't affect the generation performance. There are currently several different BLAS implementations available for build and use:
+Building the program with BLAS support may lead to some performance improvements in **prompt processing** (prefill) when using batch sizes of 32 or more (e.g. `-ub` 512 or 2048 at runtime). BLAS does not affect **generation** (decode) speed. For CPU-only inference, use `-t` equal to your physical core count and `-ub` 512 (or 2048 for long prompts). See [Token generation performance tips](development/token_generation_performance_tips.md) for runtime tuning. There are currently several different BLAS implementations available for build and use:
 
 ### Accelerate Framework
 

@@ -301,6 +301,23 @@ For more details, please refer to [multimodal documentation](../../docs/multimod
 
   Binary is at `./build/bin/cheese-server`
 
+## Performance
+
+The server runs inference on a **single thread** (one `cheese_decode()` at a time). Main levers for throughput and latency:
+
+- **`-t N` / `--threads N`** — CPU threads for decode; use physical core count to avoid oversaturation. See [token generation performance tips](../../docs/development/token_generation_performance_tips.md).
+- **`-ngl N` / `--n-gpu-layers N`** — GPU layer offload when built with CUDA/Metal/SYCL; set high (e.g. `999` or `all`) to use the GPU.
+- **`-ub N` / `--ubatch-size N`** — Physical batch size for prompt processing; ≥ 32 helps with BLAS-accelerated prefill.
+- **Slot count (`-np` / `--parallel N`)** — Number of concurrent request slots. More slots improve utilization when many requests are in flight; each slot uses memory (KV cache per slot).
+
+For multi-request throughput, ensure enough slots and tune `-t` and `-ngl` for your hardware.
+
+**Recommended values by deployment:**
+
+- **CPU-only:** `-t` = number of physical cores; `-ub` 512 (or 2048 for long prompts). Default slot count (auto) is 4.
+- **GPU:** Build with CUDA/Metal/SYCL, then `-ngl` high (e.g. `999` or `all`); keep `-t` at 4–8 for non-offloaded work.
+- **High-throughput server:** Increase `-np` (slots) if you have many concurrent requests; balance with memory (each slot uses KV cache). Use existing `--*-default` presets (e.g. `--embedding-gemma-default`) as examples for batch/ubatch/parallel.
+
 ## Build with SSL
 
 `cheese-server` can also be built with SSL support using OpenSSL 3
