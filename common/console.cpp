@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <cstring>
 #include <stdarg.h>
 
 #if defined(_WIN32)
@@ -169,6 +170,14 @@ namespace console {
 
     // Keep track of current display and only emit ANSI code if it changes
     void set_display(display_type display) {
+        if (out == nullptr) {
+            out = stdout;
+        }
+        // In simple_io mode skip log flush and ANSI to avoid any crash before readline (no model case)
+        if (simple_io) {
+            current_display = display;
+            return;
+        }
         if (advanced_display && current_display != display) {
             common_log_flush(common_log_main());
             switch(display) {
@@ -1019,6 +1028,10 @@ namespace console {
     }
 
     static bool readline_simple(std::string & line, bool multiline_input) {
+        // Flush output before blocking on input so prompt is visible and C/C++ streams stay consistent
+        if (out != nullptr) {
+            fflush(out);
+        }
 #if defined(_WIN32)
         std::wstring wline;
         if (!std::getline(std::wcin, wline)) {
@@ -1032,11 +1045,17 @@ namespace console {
         line.resize(size_needed);
         WideCharToMultiByte(CP_UTF8, 0, &wline[0], (int)wline.size(), &line[0], size_needed, NULL, NULL);
 #else
-        if (!std::getline(std::cin, line)) {
-            // Input stream is bad or EOF received
-            line.clear();
+        // Use fgets to avoid C++ iostream and getline() allocation; minimal path for --simple-io
+        static char buf[4096];
+        line.clear();
+        if (fgets(buf, sizeof(buf), stdin) == nullptr) {
             return false;
         }
+        size_t n = strlen(buf);
+        while (n > 0 && (buf[n - 1] == '\n' || buf[n - 1] == '\r')) {
+            buf[--n] = '\0';
+        }
+        line.assign(buf, n);
 #endif
         if (!line.empty()) {
             char last = line.back();
@@ -1115,6 +1134,9 @@ namespace console {
     }
 
     void log(const char * fmt, ...) {
+        if (out == nullptr) {
+            out = stdout;
+        }
         va_list args;
         va_start(args, fmt);
         vfprintf(out, fmt, args);
@@ -1122,6 +1144,9 @@ namespace console {
     }
 
     void error(const char * fmt, ...) {
+        if (out == nullptr) {
+            out = stdout;
+        }
         va_list args;
         va_start(args, fmt);
         display_type cur = current_display;
@@ -1132,6 +1157,8 @@ namespace console {
     }
 
     void flush() {
-        fflush(out);
+        if (out != nullptr) {
+            fflush(out);
+        }
     }
 }

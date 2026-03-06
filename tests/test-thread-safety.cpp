@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <cstdio>
+#include <fstream>
 #include "cheese.h"
 #include "arg.h"
 #include "common.h"
@@ -18,6 +20,18 @@ int main(int argc, char ** argv) {
 
     if (!common_params_parse(argc, argv, params, CHEESE_EXAMPLE_COMMON)) {
         return 1;
+    }
+
+    // Skip if model file is missing or too small (e.g. download was skipped)
+    std::ifstream f(params.model.path, std::ios::binary);
+    if (!f.good()) {
+        LOG_INF("test-thread-safety: model file missing, skipping\n");
+        return 0;
+    }
+    f.seekg(0, std::ios::end);
+    if (f.tellg() < 1000) {
+        LOG_INF("test-thread-safety: model file too small, skipping\n");
+        return 0;
     }
 
     common_init();

@@ -100,6 +100,9 @@ option(CHEESE_SANITIZE_THREAD    "cheese: enable thread sanitizer"    OFF)
 option(CHEESE_SANITIZE_ADDRESS   "cheese: enable address sanitizer"   OFF)
 option(CHEESE_SANITIZE_UNDEFINED "cheese: enable undefined sanitizer" OFF)
 
+# coverage (gcov/lcov; use with CMAKE_BUILD_TYPE=Debug for best results)
+option(CHEESE_COVERAGE "cheese: enable code coverage (gcov)" OFF)
+
 # utils
 option(CHEESE_BUILD_COMMON "cheese: build common utils library" ${CHEESE_STANDALONE})
 
@@ -184,6 +187,8 @@ if (NOT TARGET ggml AND NOT CHEESE_USE_SYSTEM_GGML)
     add_subdirectory(ggml)
     # ... otherwise assume ggml is added by a parent CMakeLists.txt
 endif()
+
+# pomaicache and contextsqueezer are no longer built; prompt-prefix cache feature is disabled.
 
 #
 # build the library

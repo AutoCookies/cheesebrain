@@ -40,7 +40,7 @@ Run your first model in seconds:
 # Chat with a model
 ./build/bin/cheese-cli -m model.gguf -cnv
 
-# Start an OpenAI-compatible server
+# Start an OpenAI-compatible API server (no UI by default; add --webui for the web UI)
 ./build/bin/cheese-server -m model.gguf --port 8080
 ```
 
@@ -56,6 +56,10 @@ Explore our comprehensive guides to get the most out of Cheese:
 - [Command Line Interface (CLI)](tools/cli/README.md)
 - [HTTP API Server](tools/server/README.md)
 - [Quantization Guide](tools/quantize/README.md)
+
+## Performance
+
+To get the best speed: build with a backend that matches your hardware (see [Build](docs/build.md): BLAS for CPU prefill, CUDA/Metal/SYCL for GPU). At runtime, tune threads (`-t`), GPU layers (`-ngl`), and batch size (`-ub`). See [Token generation performance tips](docs/development/token_generation_performance_tips.md) for CPU/GPU tuning and [Server README](tools/server/README.md#performance) for server throughput. To measure speed, see [Benchmarking](docs/development/benchmarking.md) and `scripts/bench-perf.sh`.
 
 ---
 

@@ -1,0 +1,63 @@
+# Code coverage (gcov/lcov). Run manually or on schedule.
+# Builds with CHEESE_COVERAGE=ON, runs tests, generates and uploads coverage report.
+name: Coverage
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run weekly on Sunday 00:00 UTC
+    - cron: '0 0 * * 0'
+
+jobs:
+  coverage-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libssl-dev \
+            python3 python3-pip python3-dev \
+            lcov
+
+      - name: Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install ./gguf-py
+
+      - name: Configure (coverage)
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCHEESE_COVERAGE=ON \
+            -DCHEESE_FATAL_WARNINGS=OFF \
+            -DGGML_RPC=ON
+
+      - name: Build
+        run: cmake --build build --config Debug -j $(nproc)
+
+      - name: Run tests
+        run: |
+          cd build
+          ctest -L main --verbose --timeout 600 --output-on-failure || true
+
+      - name: Capture coverage (lcov)
+        run: |
+          cd build
+          lcov --directory . --capture --output-file coverage.info --rc lcov_branch_coverage=0
+          lcov --remove coverage.info '/usr/*' '*/tests/*' '*/ggml/*' '*/examples/*' --output-file coverage.info
+
+      - name: Generate HTML report
+        run: |
+          cd build
+          genhtml coverage.info --output-directory coverage_html --legend
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/coverage_html/

@@ -165,15 +165,22 @@ if (NOT WIN32 OR NOT BUILD_SHARED_LIBS)
 
     cheese_build(test-gbnf-validator.cpp)
 
+    # Validate grammars in grammars/ with minimal valid inputs (script runs test-gbnf-validator)
+    if (NOT WIN32)
+        add_test(NAME validate-grammars COMMAND ${PROJECT_SOURCE_DIR}/scripts/validate-grammars.sh ${CMAKE_BINARY_DIR})
+        set_tests_properties(validate-grammars PROPERTIES LABELS "main" WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    endif()
+
     # build test-tokenizer-1-bpe target once and add many tests
     cheese_build(test-tokenizer-1-bpe.cpp)
 
-    # TODO: disabled due to slowness
+    # Disabled: test-tokenizer-1-bpe round-trip (detokenize/tokenize) can fail with some vocabs (e.g. token 94).
+    # Run full set via scheduled or self-hosted CI if needed.
+    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-2     ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-2.gguf)
+    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-cheese-bpe ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-cheese-bpe.gguf --ignore-merges)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-aquila    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-aquila.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-falcon    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-falcon.gguf)
-    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-2     ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-2.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-neox  ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-neox.gguf)
-    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-cheese-bpe ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-cheese-bpe.gguf --ignore-merges)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-mpt       ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-mpt.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-refact    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-refact.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-starcoder ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-starcoder.gguf)
@@ -279,3 +286,26 @@ target_link_libraries(${TEST_TARGET} PRIVATE cheese)
 
 cheese_build_and_test(test-alloc.cpp)
 target_include_directories(test-alloc PRIVATE ${PROJECT_SOURCE_DIR}/ggml/src)
+
+# 3-combo PromptBuilder test (pomaicache + contextsqueezer); only when submodules are built
+if (TARGET pomaicache AND TARGET contextsqueeze)
+    set(CHEESE_TEST_NAME test-prompt-builder)
+    add_executable(${CHEESE_TEST_NAME}
+        test-prompt-builder.cpp
+        get-model.cpp
+        ${CMAKE_SOURCE_DIR}/src/prompt_builder.cpp
+    )
+    set_target_properties(${CHEESE_TEST_NAME} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_compile_definitions(${CHEESE_TEST_NAME} PRIVATE CHEESE_HAVE_PROMPT_CACHE_POMAI)
+    target_include_directories(${CHEESE_TEST_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/third_party/pomaicache/include
+        ${CMAKE_SOURCE_DIR}/third_party/contextsqueezer/native/include
+    )
+    target_link_libraries(${CHEESE_TEST_NAME} PRIVATE common pomaicache contextsqueeze)
+    if (CHEESE_TESTS_INSTALL)
+        install(TARGETS ${CHEESE_TEST_NAME} RUNTIME)
+    endif()
+    cheese_test(${CHEESE_TEST_NAME} NAME test-prompt-builder LABEL "model")
+    unset(CHEESE_TEST_NAME)
+endif()

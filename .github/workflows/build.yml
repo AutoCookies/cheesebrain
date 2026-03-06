@@ -5,10 +5,13 @@ on:
   push:
     branches:
       - master
+      - main
     paths: [
       '.github/workflows/build.yml',
       '.github/workflows/build-linux-cross.yml',
       '.github/workflows/build-cmake-pkg.yml',
+      'ci/**',
+      'cmake/**',
       '**/CMakeLists.txt',
       '**/.cmake',
       '**/*.h',
@@ -31,6 +34,8 @@ on:
       '.github/workflows/build.yml',
       '.github/workflows/build-linux-cross.yml',
       '.github/workflows/build-cmake-pkg.yml',
+      'ci/**',
+      'cmake/**',
       '**/CMakeLists.txt',
       '**/.cmake',
       '**/*.h',

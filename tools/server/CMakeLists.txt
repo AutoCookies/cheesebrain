@@ -23,6 +23,18 @@ target_include_directories(${TARGET} PRIVATE ../mtmd)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(${TARGET} PUBLIC common mtmd ${CMAKE_THREAD_LIBS_INIT})
 
+if (TARGET pomaicache)
+    set_target_properties(${TARGET} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_compile_definitions(${TARGET} PRIVATE CHEESE_HAVE_PROMPT_CACHE_POMAI)
+    target_sources(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/src/prompt_builder.cpp)
+    target_include_directories(${TARGET} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/third_party/contextsqueezer/native/include
+        ${CMAKE_SOURCE_DIR}/third_party/pomaicache/include
+    )
+    target_link_libraries(${TARGET} PRIVATE pomaicache contextsqueeze)
+endif()
+
 
 # cheese-server executable
 

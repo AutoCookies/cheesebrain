@@ -70,6 +70,8 @@ Each incoming HTTP request is handled by its own thread managed by the HTTP libr
 - All JSON formatting and chat template logic must stay in the HTTP layer.
 - Avoid passing raw JSON between the HTTP layer and `server_slot`. Instead, parse everything into native C++ types as early as possible.
 
+**Inference-thread performance:** `send_partial_response` and `send_final_response` do not build JSON; they only fill a `server_task_result_*` struct and push it to the response queue. JSON is built later when the HTTP side calls `result->to_json()`. The main potentially heavy work still on the inference thread is `slot.task->tokens.detokenize(ctx, true)` in `send_final_response` (full prompt detokenize for the response). If profiling shows this to be significant, consider deferring detokenize to the response reader (would require passing context/vocab or token sequence to the HTTP layer).
+
 ### Example trace of a request
 
 Here is an example trace of an API request for text completion:

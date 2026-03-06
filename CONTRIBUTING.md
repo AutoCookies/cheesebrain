@@ -83,6 +83,7 @@ Maintainers reserve the right to decline review or close pull requests for any r
     _(NOTE: this guideline is yet to be applied to the `cheese.cpp` codebase. New code should follow this guideline.)_
 
 - Try to follow the existing patterns in the code (indentation, spaces, etc.). In case of doubt use `clang-format` (from clang-tools v15+) to format the added code
+- For error handling (when to use return codes vs exceptions, C API failure semantics), see [Error handling](docs/error_handling.md)
 - For anything not covered in the current guidelines, refer to the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 - Tensors store data in row-major order. We refer to dimension 0 as columns, 1 as rows, 2 as matrices
 - Matrix multiplication is unconventional: [`C = ggml_mul_mat(ctx, A, B)`](https://github.com/ggml-org/cheese.cpp/blob/880e352277fc017df4d5794f0c21c44e1eae2b84/ggml.h#L1058-L1064) means $C^T = A B^T \Leftrightarrow C = B A^T.$

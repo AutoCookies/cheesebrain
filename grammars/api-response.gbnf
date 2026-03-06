@@ -1,0 +1,12 @@
+# Constrains output to a minimal API-style JSON object: "status" (string), "data" (object or array or string), optional "error" (string).
+root   ::= "{" ws status-kv "," ws data-kv ("," ws error-kv)? "}" ws
+status-kv ::= "\"status\"" ws ":" ws string
+data-kv   ::= "\"data\"" ws ":" ws (object | array | string)
+error-kv  ::= "\"error\"" ws ":" ws string
+
+object ::= "{" ws (string ":" ws value ("," ws string ":" ws value)*)? "}" ws
+array  ::= "[" ws (value ("," ws value)*)? "]" ws
+string ::= "\"" ([^"\\\x00-\x1F] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4}))* "\"" ws
+value  ::= object | array | string | number | ("true" | "false" | "null") ws
+number ::= "-"? ([0-9] | [1-9] [0-9]*) ("." [0-9]+)? ([eE] [-+]? [0-9]+)? ws
+ws     ::= ([ \t\n]*)?

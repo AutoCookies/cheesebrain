@@ -69,6 +69,7 @@
 
 /models/*
 /models-mnt
+/models/qwen0.5b.gguf
 !/models/.editorconfig
 !/models/ggml-vocab-*.gguf*
 !/models/templates

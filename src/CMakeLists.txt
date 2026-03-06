@@ -30,6 +30,7 @@ add_library(cheese
             cheese-model-loader.cpp
             cheese-model-saver.cpp
             cheese-model.cpp
+            cheese-model-api.cpp
             cheese-quant.cpp
             cheese-sampler.cpp
             cheese-vocab.cpp

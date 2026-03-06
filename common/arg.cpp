@@ -590,9 +590,8 @@ static bool common_params_parse_ex(int argc, char ** argv, common_params_context
         common_params_handle_model(params.vocoder.model,           params.hf_token, params.offline);
     }
 
-    // model is required (except for server)
-    // TODO @ngxson : maybe show a list of available models in CLI in this case
-    if (params.model.path.empty() && ctx_arg.ex != CHEESE_EXAMPLE_SERVER && !params.usage && !params.completion) {
+    // model is required (except for server and CLI; CLI can start without model and use /model pull or /model load)
+    if (params.model.path.empty() && ctx_arg.ex != CHEESE_EXAMPLE_SERVER && ctx_arg.ex != CHEESE_EXAMPLE_CLI && !params.usage && !params.completion) {
         throw std::invalid_argument("error: --model is required\n");
     }
 
@@ -633,6 +632,34 @@ static bool common_params_parse_ex(int argc, char ** argv, common_params_context
             params.chat_template.c_str(),
             params.use_jinja ? "" : "\nnote: cheese.cpp was started without --jinja, we only support commonly used templates"
         ));
+    }
+
+    // Global env overrides for prompt cache / contextsqueezer.
+    // These sit on top of any CLI/preset values, matching the plan for CHEESE_* knobs.
+    {
+        common_params & p = params;
+
+        if (const char * v = std::getenv("CHEESE_TTL_SEC")) {
+            long long sec = atoll(v);
+            if (sec > 0) {
+                p.prompt_cache_ttl_ms = sec * 1000;
+            }
+        }
+
+        if (const char * v = std::getenv("CHEESE_MIN_PREFIX_TOKENS")) {
+            long long tokens = atoll(v);
+            if (tokens > 0 && tokens <= INT32_MAX) {
+                p.prompt_cache_prefix_min_tokens = (int32_t) tokens;
+            }
+        }
+
+        if (const char * v = std::getenv("CHEESE_SQUEEZE_AGGRESSIVENESS")) {
+            long long aggr = atoll(v);
+            if (aggr >= 0 && aggr <= 10) {
+                p.contextsqueeze_aggressiveness = (int32_t) aggr;
+            }
+        }
+
     }
 
     common_log_set_verbosity_thold(params.verbosity);

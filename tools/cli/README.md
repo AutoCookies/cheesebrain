@@ -1,5 +1,14 @@
 # cheese.cpp/tools/cli
 
+Interactive chat CLI for cheesebrain. You can start with a model (`-m model.gguf` or `--hf-repo user/model`) or **start with no model** and pull one from the prompt.
+
+**Start without a model:** run `cheese-cli` with no `-m`/`--model`. You will see:
+- `/model pull <url|hf-repo>` — download and load a model (e.g. `ggml-org/models` or `user/model:Q4_K_M`, or a direct GGUF URL)
+- `/model load <path>` — load a model from a local file path
+- `/exit` — exit
+
+Example: `cheese-cli` then type `/model pull ggml-org/test-model-stories260K` to download and load that model, then chat.
+
 ## Usage
 
 <!-- HELP_START -->
@@ -190,3 +199,13 @@
 | `--vision-gemma-12b-default` | use Gemma 3 12B QAT (note: can download weights from the internet) |
 
 <!-- HELP_END -->
+
+## Performance
+
+Key flags that affect inference speed and throughput:
+
+- **`-t N` / `--threads N`** — Number of CPU threads for generation. Use your machine's **physical core count**; setting this too high can oversaturate the CPU and slow things down. If generation is very slow, try `-t 1` first, then increase. See [token generation performance tips](../../docs/development/token_generation_performance_tips.md).
+- **`-ngl N` / `--n-gpu-layers N`** — When built with CUDA/Metal/SYCL, set to a large value (e.g. `999` or `all`) to offload as many layers as possible to the GPU.
+- **`-b N` / `-ub N`** — Batch size for prompt processing; `-ub` (physical batch size) ≥ 32 enables BLAS acceleration for prefill. Default 512 is a good start; increase (e.g. 2048) for long prompts.
+- **`-fa` / `--flash-attn`** — Flash Attention (when available in your build) can improve prefill and decode speed on long contexts; use `on`, `off`, or `auto`. See [Build](../../docs/build.md) for backend support.
+- **`--perf`** — Enable internal performance timings so the CLI prints prompt and generation tokens/second (e.g. "Prompt: 165.3 t/s | Generation: 48.6 t/s").

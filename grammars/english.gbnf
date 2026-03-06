@@ -1,4 +1,4 @@
-# note: this might be incomplete, mostly an example
+# Example only: constrains output to English-like text (letters, digits, punctuation). May be incomplete; use as a starting point.
 root        ::= en-char+ ([ \t\n] en-char+)*
 en-char     ::= letter | digit | punctuation
 letter      ::= [a-zA-Z]

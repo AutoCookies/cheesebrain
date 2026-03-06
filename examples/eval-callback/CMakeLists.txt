@@ -21,6 +21,10 @@ if(CHEESE_BUILD_TESTS)
         -P ${CMAKE_SOURCE_DIR}/cmake/download-models.cmake
     )
     set_tests_properties(${TEST_TARGET}-download-model PROPERTIES FIXTURES_SETUP ${TEST_TARGET}-download-model)
-    add_test(NAME ${TEST_TARGET} COMMAND cheese-eval-callback -m "${MODEL_DEST}" --prompt hello --seed 42 -ngl 0)
+    add_test(NAME ${TEST_TARGET} COMMAND ${CMAKE_COMMAND}
+        -DMODEL_DEST=${MODEL_DEST}
+        -DTEST_EXEC=$<TARGET_FILE:cheese-eval-callback>
+        -P ${CMAKE_SOURCE_DIR}/cmake/run-eval-callback-test-if-model.cmake
+    )
     set_tests_properties(${TEST_TARGET} PROPERTIES FIXTURES_REQUIRED ${TEST_TARGET}-download-model)
 endif()

@@ -259,6 +259,7 @@ int main(int argc, char ** argv) {
         ctx_http.is_ready.store(true);
 
         LOG_INF("%s: model loaded\n", __func__);
+        LOG_INF("%s: tip: tune -t (threads) and -ngl (GPU layers) for speed; see docs/development/token_generation_performance_tips.md\n", __func__);
 
         shutdown_handler = [&](int) {
             // this will unblock start_loop()
