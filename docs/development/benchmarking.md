@@ -35,6 +35,16 @@ It prints a table with columns including **S_PP t/s** (prompt tokens per second)
 
 For more comprehensive benchmarks (including different backends and tests), see [tools/cheese-bench/README.md](../../tools/cheese-bench/README.md).
 
+## Run all benchmarks
+
+To run both **cheese-bench** and **cheese-batched-bench** in one go (e.g. after tests), use:
+
+```bash
+./scripts/run-all-benches.sh [model.gguf] [build_dir]
+```
+
+Default model path is `models/qwen0.5b.gguf`. Place a GGUF model there or pass the path as the first argument.
+
 ## CI or scripted runs
 
 Use [scripts/bench-perf.sh](../../scripts/bench-perf.sh) to run a quick CLI benchmark and optionally extract t/s for comparison or CI.

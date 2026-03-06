@@ -1,3 +1,4 @@
+# Constrains output to valid JSON: object, array, string, number, boolean, or null.
 root   ::= object
 value  ::= object | array | string | number | ("true" | "false" | "null") ws
 

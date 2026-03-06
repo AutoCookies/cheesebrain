@@ -1,3 +1,4 @@
+# Constrains output to C code snippet structure: declarations, statements, expressions, and comments.
 root ::= (declaration)*
 
 declaration ::= dataType identifier "(" parameter? ")" "{" statement* "}"

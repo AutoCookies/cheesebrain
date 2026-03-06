@@ -1,0 +1,5 @@
+# Constrains output to Markdown headings: one or more lines of #, ##, ###, etc. followed by space and heading text.
+root    ::= (heading "\n")+
+heading ::= prefix " " line
+prefix  ::= "#" | "##" | "###" | "####" | "#####" | "######"
+line    ::= [^\n\r]*

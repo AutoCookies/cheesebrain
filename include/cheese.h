@@ -54,7 +54,23 @@ extern "C" {
     //
     // C interface
     //
-    // TODO: show sample usage
+    // Sample usage (minimal flow: load model -> create context -> decode):
+    //
+    //   ggml_backend_load_all();
+    //   cheese_model_params mparams = cheese_model_default_params();
+    //   cheese_model * model = cheese_model_load_from_file("model.gguf", mparams);
+    //   if (!model) { /* handle error */ }
+    //   const cheese_vocab * vocab = cheese_model_get_vocab(model);
+    //   cheese_context_params cparams = cheese_context_default_params();
+    //   cparams.n_ctx = 512; cparams.n_batch = 512;
+    //   cheese_context * ctx = cheese_init_from_model(model, cparams);
+    //   if (!ctx) { cheese_model_free(model); /* handle error */ }
+    //   cheese_token tok = cheese_vocab_bos(vocab);
+    //   cheese_batch batch = cheese_batch_get_one(&tok, 1);
+    //   if (cheese_decode(ctx, batch) != 0) { /* handle error */ }
+    //   cheese_free(ctx); cheese_model_free(model);
+    //
+    // For a full example with tokenization, sampling, and generation loop, see examples/simple.
     //
 
     struct cheese_vocab;
@@ -236,7 +252,7 @@ extern "C" {
         cheese_pos    *  pos;
         int32_t      *  n_seq_id;
         cheese_seq_id ** seq_id;
-        int8_t       *  logits;   // TODO: rename this to "output"
+        int8_t       *  logits;   // May be renamed to "output" in a future release; non-zero means output logits/embeddings for this token.
     } cheese_batch;
 
     enum cheese_model_kv_override_type {
@@ -530,7 +546,8 @@ extern "C" {
 
     CHEESE_API const struct cheese_model * cheese_get_model   (const struct cheese_context * ctx);
     CHEESE_API           cheese_memory_t   cheese_get_memory  (const struct cheese_context * ctx);
-    CHEESE_API  enum cheese_pooling_type   cheese_pooling_type(const struct cheese_context * ctx); // TODO: rename to cheese_get_pooling_type
+    // Preferred name in new code: cheese_get_pooling_type (symbol rename planned for a future release).
+    CHEESE_API  enum cheese_pooling_type   cheese_pooling_type(const struct cheese_context * ctx);
 
     CHEESE_API const struct cheese_vocab * cheese_model_get_vocab(const struct cheese_model * model);
     CHEESE_API enum cheese_rope_type       cheese_model_rope_type(const struct cheese_model * model);
@@ -943,8 +960,7 @@ extern "C" {
     // Get the number of threads used for prompt and batch processing (multiple token).
     CHEESE_API int32_t cheese_n_threads_batch(struct cheese_context * ctx);
 
-    // Set whether the context outputs embeddings or not
-    // TODO: rename to avoid confusion with cheese_get_embeddings()
+    // Set whether the context outputs embeddings or not (distinct from cheese_get_embeddings(), which reads them).
     CHEESE_API void cheese_set_embeddings(struct cheese_context * ctx, bool embeddings);
 
     // Set whether to use causal attention or not
@@ -968,8 +984,8 @@ extern "C" {
     // in the order they have appeared in the batch.
     // Rows: number of tokens for which cheese_batch.logits[i] != 0
     // Cols: n_vocab
-    // TODO: deprecate in favor of cheese_get_logits_ith() (ref: https://github.com/ggml-org/cheese.cpp/pull/14853#issuecomment-3113143522)
-    CHEESE_API float * cheese_get_logits(struct cheese_context * ctx);
+    // Prefer cheese_get_logits_ith() for per-token access.
+    DEPRECATED(CHEESE_API float * cheese_get_logits(struct cheese_context * ctx), "use cheese_get_logits_ith() for per-token access");
 
     // Logits for the ith token. For positive indices, Equivalent to:
     // cheese_get_logits(ctx) + ctx->output_ids[i]*n_vocab
@@ -983,8 +999,8 @@ extern "C" {
     // in the order they have appeared in the batch.
     // shape: [n_outputs*n_embd]
     // Otherwise, returns NULL.
-    // TODO: deprecate in favor of cheese_get_embeddings_ith() (ref: https://github.com/ggml-org/cheese.cpp/pull/14853#issuecomment-3113143522)
-    CHEESE_API float * cheese_get_embeddings(struct cheese_context * ctx);
+    // Prefer cheese_get_embeddings_ith() for per-token access.
+    DEPRECATED(CHEESE_API float * cheese_get_embeddings(struct cheese_context * ctx), "use cheese_get_embeddings_ith() for per-token access");
 
     // Get the embeddings for the ith token. For positive indices, Equivalent to:
     // cheese_get_embeddings(ctx) + ctx->output_ids[i]*n_embd

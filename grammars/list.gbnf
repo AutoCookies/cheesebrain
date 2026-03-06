@@ -1,3 +1,4 @@
+# Constrains output to bullet list lines: "- " followed by line content (one item per line).
 root ::= item+
 
 # Excludes various line break characters

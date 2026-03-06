@@ -113,9 +113,28 @@ item ::= [^\n]+ "\n"
 
 ## Next steps
 
-This guide provides a brief overview. Check out the GBNF files in this directory (`grammars/`) for examples of full grammars. You can try them out with:
+This guide provides a brief overview. Check out the GBNF files in this directory (`grammars/`) for examples of full grammars.
+
+## Grammars in this directory
+
+| File | Description | Example |
+|------|-------------|---------|
+| `chess.gbnf` | Chess moves in algebraic notation (PGN-style) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/chess.gbnf -p 'Generate one move: 1. '` |
+| `json.gbnf` | Generic JSON (object, array, string, number, bool, null) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/json.gbnf -p 'Output valid JSON: '` |
+| `json_arr.gbnf` | JSON with root restricted to an array (trailing whitespace constrained) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/json_arr.gbnf -p 'Return a JSON array: '` |
+| `list.gbnf` | Bullet list lines (`- item` per line) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/list.gbnf -p 'List three items: '` |
+| `english.gbnf` | English-like text (letters, digits, punctuation). Example only; may be incomplete. | `./build/bin/cheese-cli -m <model> --grammar-file grammars/english.gbnf -p 'Say hello: '` |
+| `japanese.gbnf` | Japanese (hiragana, katakana, punctuation, CJK). Example only; validate ranges for your use case. | `./build/bin/cheese-cli -m <model> --grammar-file grammars/japanese.gbnf -p 'Japanese only: '` |
+| `arithmetic.gbnf` | Arithmetic expressions (identifiers, numbers, + - * /) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/arithmetic.gbnf -p 'x = 1 + 2'` |
+| `c.gbnf` | C code snippet structure (declarations, statements, expressions) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/c.gbnf -p 'Complete this C function: '` |
+| `api-response.gbnf` | Minimal API JSON: `status`, `data`, optional `error` | `./build/bin/cheese-cli -m <model> --grammar-file grammars/api-response.gbnf -p 'Return API response: '` |
+| `markdown-headings.gbnf` | Markdown heading lines (`#`, `##`, … + space + text) | `./build/bin/cheese-cli -m <model> --grammar-file grammars/markdown-headings.gbnf -p 'Outline: '` |
+
+**Note:** `english.gbnf` and `japanese.gbnf` are example-only starting points; they may be incomplete or use inexact Unicode ranges. Validate or extend them for your use case.
+
+You can try any grammar with:
 ```
-./cheese-cli -m <model> --grammar-file grammars/some-grammar.gbnf -p 'Some prompt'
+./build/bin/cheese-cli -m <model> --grammar-file grammars/<file>.gbnf -p 'Your prompt'
 ```
 
 `cheese.cpp` can also convert JSON schemas to grammars either ahead of time or at each request, see below.

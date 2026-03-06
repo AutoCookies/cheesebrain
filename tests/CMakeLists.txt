@@ -165,15 +165,22 @@ if (NOT WIN32 OR NOT BUILD_SHARED_LIBS)
 
     cheese_build(test-gbnf-validator.cpp)
 
+    # Validate grammars in grammars/ with minimal valid inputs (script runs test-gbnf-validator)
+    if (NOT WIN32)
+        add_test(NAME validate-grammars COMMAND ${PROJECT_SOURCE_DIR}/scripts/validate-grammars.sh ${CMAKE_BINARY_DIR})
+        set_tests_properties(validate-grammars PROPERTIES LABELS "main" WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    endif()
+
     # build test-tokenizer-1-bpe target once and add many tests
     cheese_build(test-tokenizer-1-bpe.cpp)
 
-    # TODO: disabled due to slowness
+    # Disabled: test-tokenizer-1-bpe round-trip (detokenize/tokenize) can fail with some vocabs (e.g. token 94).
+    # Run full set via scheduled or self-hosted CI if needed.
+    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-2     ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-2.gguf)
+    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-cheese-bpe ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-cheese-bpe.gguf --ignore-merges)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-aquila    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-aquila.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-falcon    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-falcon.gguf)
-    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-2     ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-2.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-gpt-neox  ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-gpt-neox.gguf)
-    #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-cheese-bpe ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-cheese-bpe.gguf --ignore-merges)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-mpt       ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-mpt.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-refact    ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-refact.gguf)
     #cheese_test(test-tokenizer-1-bpe NAME test-tokenizer-1-starcoder ARGS ${PROJECT_SOURCE_DIR}/models/ggml-vocab-starcoder.gguf)
