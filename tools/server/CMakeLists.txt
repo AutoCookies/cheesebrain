@@ -35,6 +35,23 @@ if (TARGET pomaicache)
     target_link_libraries(${TARGET} PRIVATE pomaicache contextsqueeze)
 endif()
 
+if (TARGET pomai)
+    set_target_properties(${TARGET} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_compile_definitions(${TARGET} PRIVATE CHEESE_HAVE_POMAI_RAG)
+    target_sources(${TARGET} PRIVATE server-rag.cpp)
+    target_include_directories(${TARGET} PRIVATE
+        ${CMAKE_SOURCE_DIR}/third_party/pomaidb/include
+        ${CMAKE_SOURCE_DIR}/third_party/pomaidb/src
+    )
+    target_link_libraries(${TARGET} PRIVATE pomai)
+    if (TARGET palloc-static)
+        target_compile_definitions(${TARGET} PRIVATE PA_VECTOR=1)
+        target_include_directories(${TARGET} PRIVATE
+            ${CMAKE_SOURCE_DIR}/third_party/pomaidb/third_party/palloc/include
+        )
+        target_link_libraries(${TARGET} PRIVATE palloc-static)
+    endif()
+endif()
 
 # cheese-server executable
 
