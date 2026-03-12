@@ -28,7 +28,7 @@ For more info, please refer to the [AGENTS.md](AGENTS.md) file.
 
 Before submitting your PR:
 - Search for existing PRs to prevent duplicating efforts
-- cheese.cpp uses the ggml tensor library for model evaluation. If you are unfamiliar with ggml, consider taking a look at the [examples in the ggml repository](https://github.com/ggml-org/ggml/tree/master/examples/). [simple](https://github.com/ggml-org/ggml/tree/master/examples/simple) shows the bare minimum for using ggml. [gpt-2](https://github.com/ggml-org/ggml/tree/master/examples/gpt-2) has minimal implementations for language model inference using GPT-2. [mnist](https://github.com/ggml-org/ggml/tree/master/examples/mnist) demonstrates how to train and evaluate a simple image classifier
+- Cheesebrain uses the `ggml` tensor library for model evaluation. If you are unfamiliar with `ggml`, consider taking a look at the [examples in the ggml repository](https://github.com/ggml-org/ggml/tree/master/examples/). [`simple`](https://github.com/ggml-org/ggml/tree/master/examples/simple) shows the bare minimum for using `ggml`. [`gpt-2`](https://github.com/ggml-org/ggml/tree/master/examples/gpt-2) has minimal implementations for language model inference using GPT-2. [`mnist`](https://github.com/ggml-org/ggml/tree/master/examples/mnist) demonstrates how to train and evaluate a simple image classifier
 - Test your changes:
     - Execute [the full CI locally on your machine](ci/README.md) before publishing
     - Verify that the perplexity and the performance are not affected negatively by your changes (use `cheese-perplexity` and `cheese-bench`)
@@ -41,7 +41,7 @@ Before submitting your PR:
 - Consider allowing write access to your branch for faster reviews, as reviewers can push commits directly
 
 After submitting your PR:
-- Expect requests for modifications to ensure the code meets cheese.cpp's standards for quality and long-term maintainability
+- Expect requests for modifications to ensure the code meets Cheesebrain's standards for quality and long-term maintainability
 - Maintainers will rely on your insights and approval when making a final decision to approve and merge a PR
 - If your PR becomes stale, rebase it on top of latest `master` to get maintainers attention
 - Consider adding yourself to [CODEOWNERS](CODEOWNERS) to indicate your availability for fixing related issues and reviewing related PRs
@@ -50,7 +50,7 @@ After submitting your PR:
 
 - Squash-merge PRs
 - Use the following format for the squashed commit title: `<module> : <commit title> (#<issue_number>)`. For example: `utils : fix typo in utils.py (#1234)`
-- Optionally pick a `<module>` from here: https://github.com/ggml-org/cheese.cpp/wiki/Modules
+- Optionally pick a `<module>` that best matches the area you touched (e.g. `ggml`, `tools/server`, `tools/cli`, `tests`, etc.).
 - Let other maintainers merge their own PRs
 - When merging a PR, make sure you have a good understanding of the changes
 - Be mindful of maintenance: most of the work going into a feature happens after the PR is merged. If the PR author is not committed to contribute long-term, someone else needs to take responsibility (you)
@@ -80,7 +80,7 @@ Maintainers reserve the right to decline review or close pull requests for any r
     const enum cheese_rope_type rope_type;
     ```
 
-    _(NOTE: this guideline is yet to be applied to the `cheese.cpp` codebase. New code should follow this guideline.)_
+    _(NOTE: this guideline is yet to be applied consistently to the Cheesebrain codebase. New code should follow this guideline.)_
 
 - Try to follow the existing patterns in the code (indentation, spaces, etc.). In case of doubt use `clang-format` (from clang-tools v15+) to format the added code
 - For error handling (when to use return codes vs exceptions, C API failure semantics), see [Error handling](docs/error_handling.md)
@@ -142,7 +142,7 @@ Maintainers reserve the right to decline review or close pull requests for any r
     enum cheese_pooling_type cheese_pooling_type(const cheese_context_t ctx);
     ```
 
-    _(NOTE: this guideline is yet to be applied to the `cheese.cpp` codebase. New code should follow this guideline)_
+    _(NOTE: this guideline is yet to be applied consistently to the Cheesebrain codebase. New code should follow this guideline.)_
 
 - C/C++ filenames are all lowercase with dashes. Headers use the `.h` extension. Source files use the `.c` or `.cpp` extension
 - Python filenames are all lowercase with underscores
@@ -168,7 +168,7 @@ Maintainers reserve the right to decline review or close pull requests for any r
 - When adding or modifying a large piece of code:
   - If you are a collaborator, make sure to add yourself to [CODEOWNERS](CODEOWNERS) to indicate your availability for reviewing related PRs
   - If you are a contributor, find an existing collaborator who is willing to review and maintain your code long-term
-  - Provide the necessary CI workflow (and hardware) to test your changes (see [ci/README.md](https://github.com/ggml-org/cheese.cpp/tree/master/ci))
+  - Provide the necessary CI workflow (and hardware) to test your changes (see [ci/README.md](ci/README.md))
 
 - New code should follow the guidelines (coding, naming, etc.) outlined in this document. Exceptions are allowed in isolated, backend-specific parts of the code that do not interface directly with the `ggml` interfaces.
   _(NOTE: for legacy reasons, existing code is not required to follow this guideline)_
@@ -181,6 +181,4 @@ Maintainers reserve the right to decline review or close pull requests for any r
 
 # Resources
 
-The Github issues, PRs and discussions contain a lot of information that can be useful to get familiar with the codebase. For convenience, some of the more important information is referenced from Github projects:
-
-https://github.com/ggml-org/cheese.cpp/projects
+The GitHub issues, PRs and discussions in this repository contain a lot of information that can be useful to get familiar with the codebase. Browse open and closed issues and pull requests to see common patterns and prior design decisions.
