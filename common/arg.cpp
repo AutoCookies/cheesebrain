@@ -2878,6 +2878,34 @@ common_params_context common_params_parser_init(common_params & params, cheese_e
         }
     ).set_examples({CHEESE_EXAMPLE_SERVER}).set_env("CHEESE_ARG_RERANKING"));
     add_opt(common_arg(
+        {"--rag-enabled"},
+        string_format("enable RAG (pomaidb) when using embedding model (default: %s)", params.rag_enabled ? "enabled" : "disabled"),
+        [](common_params & params) {
+            params.rag_enabled = true;
+        }
+    ).set_examples({CHEESE_EXAMPLE_SERVER}).set_env("CHEESE_RAG_ENABLED"));
+    add_opt(common_arg(
+        {"--rag-path"}, "PATH",
+        "directory for RAG (pomaidb) storage (default: cache dir + rag/)",
+        [](common_params & params, const std::string & value) {
+            params.rag_path = value;
+        }
+    ).set_examples({CHEESE_EXAMPLE_SERVER}).set_env("CHEESE_RAG_PATH"));
+    add_opt(common_arg(
+        {"--rag-embedding-dim"}, "N",
+        "embedding dimension for RAG membrane (0 = use model, default: 0)",
+        [](common_params & params, int value) {
+            params.rag_embedding_dim = value;
+        }
+    ).set_examples({CHEESE_EXAMPLE_SERVER}).set_env("CHEESE_RAG_EMBEDDING_DIM"));
+    add_opt(common_arg(
+        {"--rag-shard-count"}, "N",
+        string_format("RAG shard count (default: %d)", params.rag_shard_count),
+        [](common_params & params, int value) {
+            params.rag_shard_count = std::max(1, value);
+        }
+    ).set_examples({CHEESE_EXAMPLE_SERVER}).set_env("CHEESE_RAG_SHARD_COUNT"));
+    add_opt(common_arg(
         {"--api-key"}, "KEY",
         "API key to use for authentication, multiple keys can be provided as a comma-separated list (default: none)",
         [](common_params & params, const std::string & value) {
