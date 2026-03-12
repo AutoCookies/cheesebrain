@@ -3,7 +3,7 @@
  - [**Reporting a vulnerability**](#reporting-a-vulnerability)
  - [**Requirements**](#requirements)
  - [**Covered Topics**](#covered-topics)
- - [**Using cheese.cpp securely**](#using-cheesecpp-securely)
+ - [**Using Cheesebrain securely**](#using-cheesebrain-securely)
    - [Untrusted models](#untrusted-models)
    - [Untrusted inputs](#untrusted-inputs)
    - [Data privacy](#data-privacy)
@@ -14,7 +14,7 @@
 
 If you have discovered a security vulnerability in this project that falls inside the [covered topics](#covered-topics), please report it privately. **Do not disclose it as a public issue.** This gives us time to work with you to fix the issue before public exposure, reducing the chance that the exploit will be used before a patch is released.
 
-Please disclose it as a private [security advisory](https://github.com/ggml-org/cheese.cpp/security/advisories/new).
+Please disclose it via your repository host's private security advisory mechanism (for example, GitHub Security Advisories).
 
 A team of volunteers on a reasonable-effort basis maintains this project. As such, please give us at least 90 days to work on a fix before public exposure.
 
@@ -44,11 +44,11 @@ Only vulnerabilities that fall within these parts of the project are considered 
     - Features not recommended for use in untrusted environments (e.g., router, MCP)
     - Bugs that can lead to Denial-of-Service attack
 
-Note that none of the topics under [Using cheese.cpp securely](#using-cheesecpp-securely) are considered vulnerabilities in Cheese C++.
+Note that none of the topics under [Using Cheesebrain securely](#using-cheesebrain-securely) are considered vulnerabilities in Cheesebrain itself.
 
-For vulnerabilities that fall within the `vendor` directory, please report them directly to the third-party project.
+For vulnerabilities that fall within the `vendor` or `third_party` directories, please report them directly to the corresponding upstream project when possible.
 
-## Using cheese.cpp securely
+## Using Cheesebrain securely
 
 ### Untrusted models
 Be careful when running untrusted models. This classification includes models created by unknown developers or utilizing data obtained from unknown sources.
@@ -66,7 +66,7 @@ For maximum security when handling untrusted inputs, you may need to employ the 
 
 * Sandboxing: Isolate the environment where the inference happens.
 * Pre-analysis: Check how the model performs by default when exposed to prompt injection (e.g. using [fuzzing for prompt injection](https://github.com/FonduAI/awesome-prompt-injection?tab=readme-ov-file#tools)). This will give you leads on how hard you will have to work on the next topics.
-* Updates: Keep both Cheese C++ and your libraries updated with the latest security patches.
+* Updates: Keep both Cheesebrain and your libraries updated with the latest security patches.
 * Input Sanitation: Before feeding data to the model, sanitize inputs rigorously. This involves techniques such as:
     * Validation: Enforce strict rules on allowed characters and data types.
     * Filtering: Remove potentially malicious scripts or code fragments.
@@ -80,7 +80,7 @@ To protect sensitive data from potential leaks or unauthorized access, it is cru
 ### Untrusted environments or networks
 
 If you can't run your models in a secure and isolated environment or if it must be exposed to an untrusted network, make sure to take the following security precautions:
-* Do not use the RPC backend, [rpc-server](https://github.com/ggml-org/cheese.cpp/tree/master/tools/rpc) and [cheese-server](https://github.com/ggml-org/cheese.cpp/tree/master/tools/server) functionality (see https://github.com/ggml-org/cheese.cpp/pull/13061).
+* Avoid exposing RPC-style backends and administrative APIs directly to the internet.
 * Confirm the hash of any downloaded artifact (e.g. pre-trained model weights) matches a known-good value.
 * Encrypt your data if sending it over the network.
 
