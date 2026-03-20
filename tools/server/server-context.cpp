@@ -17,11 +17,7 @@
 #include "cheesebrain/prompt_builder.h"
 #include "pomaicache.h"
 #endif
-#if defined(CHEESE_HAVE_POMAI_RAG)
-#include "server-rag.h"
-#include "pomai/pomai.h"
-#include "pomai/rag/pipeline.h"
-#endif
+
 
 #include <cstddef>
 #include <cinttypes>
@@ -652,13 +648,7 @@ private:
     std::unique_ptr<pomaicache::PomaiCache> pomai_cache;
     prompt_cache_config pomai_prompt_config;
 #endif
-#if defined(CHEESE_HAVE_POMAI_RAG)
-    // RAG (pomaidb): optional; requires embedding model. Pipeline uses rag_embed_ctx for embeddings.
-    cheese_context * rag_embed_ctx = nullptr;
-    std::unique_ptr<server_rag::CheeseEmbeddingProvider> rag_embed_provider;
-    std::unique_ptr<pomai::DB> rag_db;
-    std::unique_ptr<pomai::RagPipeline> rag_pipeline;
-#endif
+
 
     server_metrics metrics;
 
@@ -684,15 +674,7 @@ private:
         ctx = nullptr;
         model = nullptr;
 
-#if defined(CHEESE_HAVE_POMAI_RAG)
-        rag_pipeline.reset();
-        rag_db.reset();
-        rag_embed_provider.reset();
-        if (rag_embed_ctx) {
-            cheese_free(rag_embed_ctx);
-            rag_embed_ctx = nullptr;
-        }
-#endif
+
 
         mtmd_free(mctx);
         mctx = nullptr;
@@ -943,41 +925,7 @@ private:
         }
 #endif
 
-#if defined(CHEESE_HAVE_POMAI_RAG)
-        // RAG (pomaidb): optional when embedding model is loaded
-        if (params_base.rag_enabled && params_base.embedding && model != nullptr) {
-            const int32_t n_embd = cheese_model_n_embd_out(model);
-            if (n_embd > 0) {
-                cheese_context_params cparams = cheese_context_default_params();
-                cparams.n_ctx   = 512;
-                cparams.n_batch = 512;
-                rag_embed_ctx = cheese_init_from_model(model, cparams);
-                if (rag_embed_ctx) {
-                    rag_embed_provider = std::make_unique<server_rag::CheeseEmbeddingProvider>(rag_embed_ctx, model);
-                    server_rag::RagOptions ropts;
-                    ropts.enabled       = true;
-                    ropts.embedding_dim = params_base.rag_embedding_dim > 0
-                        ? static_cast<uint32_t>(params_base.rag_embedding_dim)
-                        : static_cast<uint32_t>(n_embd);
-                    ropts.shard_count   = std::max(1, params_base.rag_shard_count);
-                    ropts.path          = !params_base.rag_path.empty()
-                        ? params_base.rag_path
-                        : (fs_get_cache_directory() + "rag/");
-                    std::unique_ptr<pomai::DB> db;
-                    std::unique_ptr<pomai::RagPipeline> pipeline;
-                    if (server_rag::create_rag("rag", ropts, rag_embed_provider.get(), &db, &pipeline)) {
-                        rag_db = std::move(db);
-                        rag_pipeline = std::move(pipeline);
-                        SRV_WRN("RAG enabled, path = %s\n", ropts.path.c_str());
-                    } else {
-                        rag_embed_provider.reset();
-                        cheese_free(rag_embed_ctx);
-                        rag_embed_ctx = nullptr;
-                    }
-                }
-            }
-        }
-#endif
+
 
         if (!params_base.model_alias.empty()) {
             // backward compat: use first alias as model name

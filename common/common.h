@@ -524,11 +524,7 @@ struct common_params {
     std::string embd_sep   = "\n";  // separator of embeddings
     std::string cls_sep    = "\t";  // separator of classification sequences
 
-    // RAG (pomaidb) — optional; requires embedding model and CHEESE_HAVE_POMAI_RAG
-    bool    rag_enabled       = false;
-    std::string rag_path      = "";  // directory for pomaidb storage
-    int32_t rag_embedding_dim = 0;    // 0 = use model n_embd_out
-    int32_t rag_shard_count   = 1;
+
 
     // server params
     int32_t port              = 8080;         // server listens on this network port

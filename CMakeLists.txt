@@ -201,26 +201,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/contextsqueezer/native/CMakeLists.txt
     add_subdirectory(third_party/contextsqueezer/native)
 endif()
 
-# Optional: pomaidb for RAG (vector store + ingest/retrieve). Enable when submodule is present.
-if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/pomaidb/CMakeLists.txt")
-    set(POMAI_BUILD_TESTS_SAVED ${POMAI_BUILD_TESTS})
-    set(POMAI_BUILD_BENCH_SAVED ${POMAI_BUILD_BENCH})
-    set(POMAI_BUILD_TESTS OFF)
-    set(POMAI_BUILD_BENCH OFF)
-    add_subdirectory(third_party/pomaidb)
-    set(POMAI_BUILD_TESTS ${POMAI_BUILD_TESTS_SAVED})
-    set(POMAI_BUILD_BENCH ${POMAI_BUILD_BENCH_SAVED})
-    set(CHEESE_HAVE_POMAI_RAG 1)
-    # palloc (from pomaidb third_party) for RAG/server arena allocations
-    if(EXISTS "${CMAKE_SOURCE_DIR}/third_party/pomaidb/third_party/palloc/CMakeLists.txt" AND NOT TARGET palloc)
-        set(PA_OVERRIDE OFF)
-        set(PA_BUILD_SHARED OFF)
-        set(PA_BUILD_STATIC ON)
-        set(PA_BUILD_TESTS OFF)
-        set(PA_VECTOR ON)
-        add_subdirectory(third_party/pomaidb/third_party/palloc)
-    endif()
-endif()
+
 
 #
 # build the library
